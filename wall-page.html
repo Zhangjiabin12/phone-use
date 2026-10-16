@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>手机墙 · phone-wall</title>
+<style>
+/* ============ Design tokens（语义色，组件里不写死 hex） ============ */
+:root{
+  --bg:#0b0e14; --surface:#111722; --surface-2:#161d2b; --surface-3:#1c2433;
+  --border:#243044; --border-strong:#30405a;
+  --text:#e8eef7; --text-2:#aab6c8; --text-3:#7d8aa0;
+  --accent:#4c8dff; --accent-hover:#6ba1ff; --accent-ink:#08111f;
+  --ok:#3fb950; --ok-bg:#12281a; --ok-border:#1f6f36;
+  --warn:#e3b341; --warn-bg:#2a2210; --warn-border:#7a5f18;
+  --danger:#f85149; --danger-bg:#2d1417; --danger-border:#8b2b2b;
+  --info:#8b98ad; --info-bg:#182031; --info-border:#33415a;
+  --radius:12px; --radius-sm:8px; --radius-pill:999px;
+  --sp-1:4px; --sp-2:8px; --sp-3:12px; --sp-4:16px; --sp-5:24px; --sp-6:32px;
+  --shadow-1:0 1px 2px rgba(0,0,0,.4); --shadow-2:0 8px 24px rgba(0,0,0,.45);
+  --ring:0 0 0 3px rgba(76,141,255,.35);
+  --t:160ms cubic-bezier(.4,0,.2,1);
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{
+  background:var(--bg); color:var(--text);
+  font:400 16px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+  -webkit-font-smoothing:antialiased; padding:var(--sp-5) var(--sp-5) var(--sp-6);
+}
+h1,h2,h3,h4{margin:0;line-height:1.3}
+code,kbd{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.85em}
+button,input,select{font:inherit;color:inherit}
+:focus-visible{outline:none;box-shadow:var(--ring)}
+
+/* ============ 顶栏 ============ */
+.topbar{display:flex;align-items:center;gap:var(--sp-4);flex-wrap:wrap;margin-bottom:var(--sp-4)}
+.brand{display:flex;align-items:center;gap:var(--sp-2);font-size:20px;font-weight:650;letter-spacing:.2px}
+.brand svg{color:var(--accent)}
+.counters{display:flex;gap:var(--sp-2);flex-wrap:wrap}
+.counter{display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:var(--radius-pill);
+  background:var(--surface-2);border:1px solid var(--border);font-size:14px;color:var(--text-2)}
+.counter b{color:var(--text);font-weight:600}
+.spacer{flex:1 1 auto}
+
+/* ============ 按钮 ============ */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;
+  min-height:40px;padding:0 14px;border-radius:var(--radius-sm);
+  background:var(--surface-3);border:1px solid var(--border-strong);color:var(--text);
+  font-size:14px;font-weight:500;cursor:pointer;transition:background var(--t),border-color var(--t),transform var(--t)}
+.btn:hover:not(:disabled){background:#243049;border-color:#3d5273}
+.btn:active:not(:disabled){transform:translateY(1px)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn-primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:600}
+.btn-primary:hover:not(:disabled){background:var(--accent-hover);border-color:var(--accent-hover)}
+.btn-ghost{background:transparent;border-color:var(--border)}
+.btn-sm{min-height:34px;padding:0 10px;font-size:13px}
+
+/* ============ 命令条 ============ */
+.command{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+  padding:var(--sp-4);margin-bottom:var(--sp-5);box-shadow:var(--shadow-1)}
+.command h2{font-size:15px;font-weight:600;color:var(--text);margin-bottom:var(--sp-3)}
+.command .row{display:flex;gap:var(--sp-2);flex-wrap:wrap}
+.command input[type=text]{flex:1 1 320px;min-height:40px;padding:0 12px;border-radius:var(--radius-sm);
+  background:var(--bg);border:1px solid var(--border-strong);color:var(--text)}
+.command input::placeholder{color:var(--text-3)}
+.command select{min-height:40px;padding:0 10px;border-radius:var(--radius-sm);background:var(--bg);
+  border:1px solid var(--border-strong);color:var(--text)}
+
+/* ============ 设备网格（自适应，不定宽） ============ */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:var(--sp-4)}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+  padding:var(--sp-4);display:flex;flex-direction:column;gap:var(--sp-3);
+  transition:border-color var(--t),box-shadow var(--t)}
+.card:hover{border-color:var(--border-strong);box-shadow:var(--shadow-2)}
+.card.is-busy{border-color:var(--warn-border);box-shadow:inset 3px 0 0 var(--warn)}
+.card.is-offline{opacity:.72;border-color:var(--danger-border)}
+.card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:var(--sp-2)}
+.card-title{font-size:17px;font-weight:600}
+.card-sub{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px;color:var(--text-3);margin-top:2px}
+.screen{width:100%;border-radius:var(--radius-sm);background:#000;cursor:crosshair;display:block;
+  border:1px solid var(--border);min-height:320px;aspect-ratio:9/19;object-fit:contain}
+.screen-wrap{position:relative;min-height:320px}
+.screen-overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  background:rgba(11,14,20,.72);border-radius:var(--radius-sm);font-size:14px;color:var(--text-2);
+  text-align:center;padding:var(--sp-4)}
+.screen[title]{cursor:pointer}
+
+/* ============ 状态徽章（SVG 图标 + 语义色，不用 emoji） ============ */
+.badges{display:flex;flex-wrap:wrap;gap:6px}
+.badge{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:var(--radius-pill);
+  font-size:13px;border:1px solid var(--border);background:var(--surface-2);color:var(--text-2)}
+.badge svg{width:13px;height:13px}
+.badge.ok{background:var(--ok-bg);border-color:var(--ok-border);color:#7ee787}
+.badge.warn{background:var(--warn-bg);border-color:var(--warn-border);color:#f0c674}
+.badge.danger{background:var(--danger-bg);border-color:var(--danger-border);color:#ff9a92}
+.badge.info{background:var(--info-bg);border-color:var(--info-border);color:var(--text-2)}
+
+.meta{font-size:14px;color:var(--text-2);line-height:1.6}
+.meta .k{color:var(--text-3)}
+.mono{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px}
+.actions{display:flex;gap:var(--sp-2);flex-wrap:wrap;margin-top:auto}
+.screenframe{width:100%;min-height:520px;border:0;border-radius:var(--radius-sm);background:#000;display:block}
+.keybar{display:flex;gap:6px;justify-content:space-between;width:100%}
+.keybar .btn{flex:1 1 0;padding:0 4px}
+.task-row{display:flex;gap:var(--sp-2)}
+.task-row input{flex:1;min-height:40px;padding:0 12px;border-radius:var(--radius-sm);
+  background:var(--bg);border:1px solid var(--border-strong);color:var(--text)}
+
+/* ============ 阻塞提示 ============ */
+.blocker{border:1px solid var(--danger-border);background:var(--danger-bg);border-radius:var(--radius-sm);
+  padding:var(--sp-3);font-size:14px;color:#ffb4ae;display:flex;gap:var(--sp-2)}
+.blocker svg{flex:0 0 auto;width:17px;height:17px;color:var(--danger);margin-top:2px}
+.blocker ul{margin:6px 0 0;padding-left:18px}
+.blocker li{margin:4px 0}
+
+/* ============ 体检面板 ============ */
+.doc{border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;background:var(--surface-2)}
+.doc-head{padding:var(--sp-3) var(--sp-4);display:flex;gap:var(--sp-3);align-items:center;justify-content:space-between;
+  border-bottom:1px solid var(--border)}
+.doc-head.ok{background:linear-gradient(180deg,rgba(63,185,80,.14),transparent)}
+.doc-head.warn{background:linear-gradient(180deg,rgba(227,179,65,.14),transparent)}
+.doc-head.bad{background:linear-gradient(180deg,rgba(248,81,73,.16),transparent)}
+.verdict{display:flex;align-items:center;gap:var(--sp-2);font-size:15px;font-weight:600}
+.verdict svg{width:18px;height:18px}
+.verdict.ok svg{color:var(--ok)} .verdict.warn svg{color:var(--warn)} .verdict.bad svg{color:var(--danger)}
+.counts{font-size:13px;color:var(--text-2);text-align:right;line-height:1.5}
+.ability{padding:var(--sp-3) var(--sp-4);display:flex;flex-direction:column;gap:6px;font-size:14px;
+  border-bottom:1px solid var(--border)}
+.ability .can{color:#7ee787} .ability .cant{color:#f0c674}
+.ability .lbl{color:var(--text-3);margin-right:4px}
+.sec{padding:var(--sp-4)}
+.sec h4{font-size:14px;font-weight:600;color:var(--text-2);margin-bottom:var(--sp-3);
+  display:flex;align-items:center;gap:6px}
+.sec h4 svg{width:15px;height:15px}
+.chk{border:1px solid var(--border);border-left:4px solid var(--border-strong);border-radius:var(--radius-sm);
+  background:var(--surface);padding:var(--sp-3);margin-bottom:var(--sp-2)}
+.chk.ok{border-left-color:var(--ok)} .chk.warn{border-left-color:var(--warn)}
+.chk.fail{border-left-color:var(--danger)} .chk.info{border-left-color:var(--info)}
+.chk-t{display:flex;align-items:center;gap:var(--sp-2);font-size:15px;font-weight:600;margin-bottom:4px}
+.chk-d{font-size:14px;color:var(--text-2);line-height:1.6}
+.chk ol{margin:8px 0 0;padding-left:22px;font-size:14px;color:var(--text);line-height:1.8}
+.chk code{background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:1px 5px}
+details{border-top:1px solid var(--border)}
+details summary{cursor:pointer;padding:var(--sp-3) var(--sp-4);font-size:14px;color:var(--text-2);
+  display:flex;align-items:center;gap:6px;list-style:none;transition:color var(--t)}
+details summary::-webkit-details-marker{display:none}
+details summary:hover{color:var(--text)}
+details summary .chev{transition:transform var(--t)}
+details[open] summary .chev{transform:rotate(90deg)}
+details .body{padding:0 var(--sp-4) var(--sp-4)}
+.mini{font-size:13.5px;color:var(--text-2);line-height:1.6}
+.out{display:none}
+.out:not(:empty){display:block}
+
+/* ============ 加载反馈 ============ */
+.spinner{width:15px;height:15px;border:2px solid var(--border-strong);border-top-color:var(--accent);
+  border-radius:50%;display:inline-block;animation:spin .8s linear infinite;vertical-align:-2px}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+.empty{padding:var(--sp-5);text-align:center;color:var(--text-3);font-size:14px}
+@media (max-width:640px){body{padding:var(--sp-4)} .grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="6" y="2" width="12" height="20" rx="3"/><path d="M11 18.5h2"/></svg>
+    手机墙
+  </div>
+  <div class="counters" id="counters"></div>
+  <div class="spacer"></div>
+  <button class="btn" id="btnAllDoctor" type="button">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20 6 9 17l-5-5"/></svg>
+    全部体检
+  </button>
+</header>
+
+<section class="command">
+  <h2>下发任务（都交给 phone-agent，它自己看环境、自己连）</h2>
+  <div class="row">
+    <input type="text" id="gtext" placeholder="说一句话：两台一起连 928wpa2-psk 密码 12345678 ／ 连 test-portal2 做 portal 认证 账号 zjb 密码 123456">
+    <select id="gtarget">
+      <option value="auto">自动选一台空闲的</option>
+      <option value="all">所有在线终端（并行）</option>
+    </select>
+    <button class="btn btn-primary" id="gsubmit" type="button">下发</button>
+  </div>
+  <div class="out mini" id="gout" style="margin-top:12px"></div>
+</section>
+
+<main class="grid" id="grid"></main>
+<div class="empty" id="empty">正在读取终端…</div>
+
+<section class="command" id="agedWrap" style="display:none;margin-top:24px">
+  <details>
+    <summary id="agedSummary"></summary>
+    <div class="body" id="agedList" style="padding-top:0"></div>
+  </details>
+</section>
+
+<script>
+/* ---------- 图标（SVG，不用 emoji：合规 + 可着色） ---------- */
+const ICON = {
+  ok:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M20 6 9 17l-5-5"/></svg>',
+  warn:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 9v4m0 4h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/></svg>',
+  fail:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="m15 9-6 6m0-6 6 6"/></svg>',
+  info:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v5m0-8h.01"/></svg>',
+  chev:'<svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="m9 6 6 6-6 6"/></svg>',
+  wifi:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12.5a10 10 0 0 1 14 0M8.5 16a5.5 5.5 0 0 1 7 0"/><path d="M2 9a15 15 0 0 1 20 0"/><circle cx="12" cy="19.5" r=".6" fill="currentColor"/></svg>',
+  bolt:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M13 2 4.5 13H11l-1 9 8.5-11H12l1-9Z"/></svg>',
+  shield:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6l7-3Z"/></svg>',
+  clock:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>'
+};
+const esc = s => String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const codeify = s => esc(s).replace(/`([^`]+)`/g,'<code>$1</code>');
+// 高清画面：把 ws-scrcpy 的 H.264 流直接嵌进卡片（不再用低帧率截图流）
+const SCRCPY_PORT = 8000;
+function frameTag(dev){
+  const H = location.hostname;
+  const ws = encodeURIComponent(`ws://${H}:${SCRCPY_PORT}/?action=proxy-adb&remote=tcp%3A8886&udid=${dev.serial}`);
+  const src = `http://${H}:${SCRCPY_PORT}/#!action=stream&udid=${dev.serial}&player=mse&ws=${ws}&fitToScreen=true`;
+  return `<iframe class="screenframe" src="${src}" allow="autoplay; fullscreen" loading="lazy"
+            title="${esc(dev.model||dev.serial)} 实时画面（H.264）"></iframe>`;
+}
+const LAST={};
+async function api(p,opt){const r=await fetch(p,opt);return r.json()}
+
+/* ---------- 概览计数 ---------- */
+function renderCounters(devs){
+  const n={online:devs.filter(d=>d.present).length, idle:devs.filter(d=>d.state==='idle').length,
+           busy:devs.filter(d=>d.state==='busy').length, bad:devs.filter(d=>!d.usable).length};
+  document.getElementById('counters').innerHTML =
+    `<span class="counter">在线 <b>${n.online}</b></span>
+     <span class="counter">空闲 <b>${n.idle}</b></span>
+     <span class="counter">${n.busy?'占用 <b>'+n.busy+'</b>':'占用 <b>0</b>'}</span>
+     <span class="counter">${n.bad?'待处理 <b>'+n.bad+'</b>':'全部可用'}</span>`;
+}
+
+function badges(dev){
+  const B=[];
+  B.push(`<span class="badge ${dev.usable?'ok':'danger'}">${dev.usable?ICON.ok:ICON.fail}${dev.usable?'可用':'不可用'}</span>`);
+  B.push(`<span class="badge ${dev.usb_debug?'ok':'danger'}">USB调试${dev.usb_debug?'':'未开'}</span>`);
+  const injTxt = dev.root ? 'root 注入' : (dev.backend==='input' ? '坐标注入' : '无障碍点击');
+  B.push(`<span class="badge ${(dev.root||dev.backend==='input'||dev.jar_ready)?'ok':'warn'}">${injTxt}</span>`);
+  B.push(`<span class="badge ${dev.battery>=30?'ok':(dev.battery>=15?'warn':'danger')}">${ICON.bolt}${dev.battery}%</span>`);
+  if(dev.time_skew_s>30)B.push(`<span class="badge warn">${ICON.clock}时间差 ${dev.time_skew_s}s</span>`);
+  if(!dev.stay_awake)B.push(`<span class="badge warn">插电会休眠</span>`);
+  if(dev.screen_locked)B.push(`<span class="badge warn">锁屏中</span>`);
+  if(dev.screen&&dev.screen!=='Awake')B.push(`<span class="badge warn">屏幕休眠</span>`);
+  if(!dev.present)B.push(`<span class="badge danger">离线</span>`);
+  if(dev.lease){const la=dev.lease_alive||{};
+    B.push(`<span class="badge ${la.alive?'warn':'danger'}">${ICON.shield}${esc(dev.lease.owner)} · 剩 ${dev.lease.remaining_s}s${la.stalled?' · 疑似卡死':''}</span>`);}
+  return B.join('');
+}
+
+function blockerHtml(dev){
+  if(!(dev.blockers||[]).length)return '';
+  return `<div class="blocker">${ICON.fail}<div><b>这台现在用不了</b><ul>`+
+    dev.blockers.map(b=>`<li>${esc(b.msg)}<br><span class="mini">怎么修：${codeify(b.fix)}</span></li>`).join('')+`</ul></div></div>`;
+}
+
+/* ---------- 卡片 ---------- */
+function makeCard(dev){
+  const c=document.createElement('article');c.className='card';c.id='card-'+dev.serial;
+  c.innerHTML=`
+    <div class="card-head">
+      <div><div class="card-title">${esc(dev.model||dev.serial)}</div>
+           <div class="card-sub">${esc(dev.serial)}</div></div>
+      <div class="card-sub">${dev.backend||''}</div>
+    </div>
+    <div class="screen-wrap">${frameTag(dev)}
+      <div class="screen-overlay" style="display:none"></div></div>
+    <div class="keybar">
+      <button class="btn btn-sm" data-key="back" type="button">返回</button>
+      <button class="btn btn-sm" data-key="home" type="button">Home</button>
+      <button class="btn btn-sm" data-key="app_switch" type="button">最近</button>
+      <button class="btn btn-sm" data-key="notifications" type="button">通知</button>
+      <button class="btn btn-sm" data-key="wakeup" type="button">唤醒</button>
+    </div>
+    <div class="badges"></div>
+    <div class="meta"></div>
+    <div class="blk"></div>
+    <div class="task-row"><input type="text" placeholder="说一句话：连 XXX 做 portal 认证 账号.. 密码..">
+      <button class="btn btn-primary btn-sm" type="button">派任务</button></div>
+    <div class="actions">
+      <button class="btn btn-sm" data-act="lease" type="button">占用</button>
+      <button class="btn btn-sm" data-act="release" type="button">释放</button>
+      <button class="btn btn-sm" data-act="doctor" type="button">体检</button>
+      <button class="btn btn-sm" data-act="reclaim" type="button">强制收回</button>
+      <button class="btn btn-sm" data-act="takeover" type="button">接管</button>
+    </div>
+    <div class="out"></div>`;
+  {const sc=c.querySelector('.screen'); if(sc) sc.addEventListener('click',ev=>tapme(dev.serial,ev));}
+  c.querySelector('.task-row button').addEventListener('click',()=>task(dev.serial));
+  c.querySelectorAll('[data-key]').forEach(b=>b.addEventListener('click',()=>{
+    const k=b.dataset.key, L={back:'返回',home:'Home',app_switch:'最近任务',notifications:'通知栏',wakeup:'唤醒'};
+    sendKey(dev.serial,k,L[k]||k);
+  }));
+  c.querySelectorAll('[data-act]').forEach(b=>b.addEventListener('click',()=>{
+    const a=b.dataset.act;
+    if(a==='lease')lease(dev.serial);
+    else if(a==='release')release(dev.serial);
+    else if(a==='doctor')doctor(dev.serial);
+    else if(a==='takeover')takeover(dev.serial);
+    else reclaim(dev.serial);
+  }));
+  return c;
+}
+
+function updateCard(c,dev){
+  c.className='card'+(dev.state==='busy'?' is-busy':'')+(dev.present?'':' is-offline');
+  c.querySelector('.badges').innerHTML=badges(dev);
+  c.querySelector('.meta').innerHTML=
+    `<span class="k">系统</span> Android ${dev.android} · ${dev.miui||'-'}\n`+
+    `<span class="k">网络</span> ${esc(dev.wifi_ssid||'—')} ${esc(dev.wifi_ip||'')} ${esc(dev.wifi_mac||'')}\n`+
+    `<span class="k">能力</span> <span class="mono">${(dev.capabilities||[]).join(' · ').slice(0,120)}</span>`;
+  c.querySelector('.meta').style.whiteSpace='pre-line';
+  c.querySelector('.blk').innerHTML=blockerHtml(dev);
+  const busy=!!(dev.lease&&dev.lease.owner), inp=c.querySelector('input'), btn=c.querySelector('.task-row button');
+  inp.disabled=busy; btn.disabled=busy; btn.textContent=busy?'被占用':'派任务';
+  const sn=c.querySelector('.screen')||c.querySelector('.screenframe'); if(sn) sn.title=busy?('被 '+dev.lease.owner+' 占用'):'画面可直接点/滑（ws-scrcpy 转发触摸）';
+  // 画面为什么是黑的：离线 / 屏幕休眠 / 取不到帧 —— 明确告诉人，别让人以为坏了
+  const ov=c.querySelector('.screen-overlay'), img=c.querySelector('.screen');
+  if(!img){ov.style.display='none';return;}
+  let why=null;
+  if(!dev.present)why='这台当前不在线，没有画面';
+  else if(dev.screen_display_on===false)why='手机屏幕现在是关的（熄屏状态，所以画面是黑的）';
+  else if(dev.screen_blank)why='手机屏幕现在是黑的（多半已熄屏）';
+  else if(dev.screen&&dev.screen!=='Awake')why='手机屏幕已休眠（画面全黑是正常的）';
+  else if(img.complete&&img.naturalWidth===0&&img.dataset.tried==='1')
+    why='暂时取不到画面（手机可能已熄屏或投屏流断了）';
+  if(!why&&img.complete&&img.naturalWidth===0&&!img.dataset.timer){
+    img.dataset.timer='1';
+    setTimeout(()=>{if(img.naturalWidth===0){img.dataset.tried='1';refresh()}},6000);
+  }
+  if(img.naturalWidth>0){img.dataset.tried='0';delete img.dataset.timer;why=null;}
+  ov.style.display=why?'flex':'none';
+  if(why)ov.innerHTML=why+(dev.present?'<br><span class="mini">点“派任务”仍然可用（agent 会先唤醒/解锁）</span>':'');
+  img.style.opacity=why?'.25':'1';
+}
+
+async function refresh(){
+  let d;try{d=await api('/api/devices')}catch(e){return}
+  renderCounters(d.devices);
+  const g=document.getElementById('grid');
+  const online=d.devices.filter(x=>x.present), offline=d.devices.filter(x=>!x.present);
+  document.getElementById('empty').style.display=online.length?'none':'block';
+  document.getElementById('empty').textContent=offline.length?'当前没有在线终端（离线设备见下方「等待老化」）':'正在读取终端…';
+  d.devices.forEach(x=>LAST[x.serial]=x);
+  online.forEach(dev=>{let c=document.getElementById('card-'+dev.serial)||g.appendChild(makeCard(dev));updateCard(c,dev);});
+  // 离线的不占卡片位：从网格移除，折叠进「等待老化」
+  offline.forEach(dev=>{const c=document.getElementById('card-'+dev.serial);if(c)c.remove();});
+  const wrap=document.getElementById('agedWrap');
+  if(offline.length){
+    wrap.style.display='block';
+    document.getElementById('agedSummary').innerHTML=
+      `${ICON.chev}${ICON.warn} 离线设备（${offline.length}）· 等待老化清理`;
+    document.getElementById('agedList').innerHTML=offline.map(dev=>{
+      const mins=Math.round((Date.now()/1000-(dev.last_seen||0))/60);
+      const age=mins<60?mins+' 分钟':(Math.round(mins/60)+' 小时');
+      const why=(dev.blockers||[]).map(b=>b.msg+' → '+b.fix).join('；')||'adb 里看不到这台手机';
+      return `<div class="chk warn"><div class="chk-t"><span class="badge warn">离线 ${age}</span>${esc(dev.model||dev.serial)}
+        <span class="mono" style="color:var(--text-3)">${esc(dev.serial)}</span></div>
+        <div class="chk-d">${esc(why)}</div>
+        <div class="mini" style="color:var(--text-3);margin-top:4px">超过 24 小时仍未回来会自动从列表删除；插好线后自动恢复</div></div>`;
+    }).join('');
+  }else{wrap.style.display='none'}
+}
+document.getElementById('btnAllDoctor').addEventListener('click',doctorAll);
+document.getElementById('gsubmit').addEventListener('click',gtask);
+document.getElementById('gtext').addEventListener('keydown',e=>{if(e.key==='Enter')gtask()});
+
+/* ---------- 交互 ---------- */
+function spin(el,text){el.classList.add('out');el.innerHTML=`<div class="mini" style="margin-top:8px"><span class="spinner"></span> ${text}</div>`}
+async function tapme(serial,ev){
+  const img=ev.target,r=img.getBoundingClientRect();
+  if(ev.target.tagName!=='IMG')return;
+  // 关键：按【设备真实分辨率】换算，不能用压缩后的图宽（那会点偏）
+  const dev=LAST[serial]||{}, W=dev.screen_w||1080, H=dev.screen_h||2400;
+  const x=Math.round((ev.clientX-r.left)/r.width*W), y=Math.round((ev.clientY-r.top)/r.height*H);
+  const out=document.querySelector('#card-'+serial+' .out');
+  out.innerHTML=`<div class="mini" style="margin-top:8px"><span class="spinner"></span> 点击 (${x}, ${y}) / 屏幕 ${W}×${H}…</div>`;
+  const j=await api('/api/click',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({serial,x,y})});
+  out.innerHTML=`<div class="mini" style="margin-top:8px">${j.blocked?'<b style="color:var(--warn)">被占用：</b>'+esc(j.error):'已点击 ('+x+', '+y+') · '+esc(JSON.stringify(j.argv||[]))}</div>`;
+}
+async function sendKey(serial,key,label){
+  const out=document.querySelector('#card-'+serial+' .out');
+  spin(out,'发送 '+label+' …');
+  const j=await api('/api/key',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({serial,key})});
+  out.innerHTML=`<div class="mini" style="margin-top:8px">${label}: ${esc(j.ok?'已发送 ('+(j.backend||'')+')':(j.error||'失败'))}</div>`;
+}
+async function task(serial){
+  const card=document.getElementById('card-'+serial),text=card.querySelector('input').value;if(!text)return;
+  const out=card.querySelector('.out');spin(out,'agent 正在干活…（1-3 分钟）');
+  const j=await api('/api/task',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text,serial})});
+  out.innerHTML=`<div class="mini" style="margin-top:8px;white-space:pre-wrap">${esc(j.answer||JSON.stringify(j))}</div>
+    <div class="mini" style="margin-top:6px;color:var(--text-3)">${j.steps||'?'} 步 / ${j.elapsed_s||'?'}s / ${esc(j.verdict||'')}</div>`;
+}
+async function takeover(serial){
+  if(!confirm('接管 '+serial+'？会收回 agent 的占用（正在跑的任务会被打断），之后你可以直接点屏幕。'))return;
+  await api('/api/reclaim',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({serial:serial,reason:'人工接管'})});
+  await api('/api/lease',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({serial:serial,owner:'wall',ttl:1800})});
+  refresh();
+}
+async function lease(serial){const j=await api('/api/lease',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({serial,owner:'wall',ttl:900})});
+  if(!j.ok)alert('占用失败：'+(j.error||''));refresh()}
+async function release(serial){const j=await api('/api/release',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({serial,owner:'wall'})});
+  if(!j.ok)alert('只能释放自己的：'+(j.error||''));refresh()}
+async function reclaim(serial){const why=prompt('强制收回 '+serial+'？（会打断正在跑的任务）','页面手动收回');if(why===null)return;
+  await api('/api/reclaim',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({serial,reason:why||'页面手动收回'})});refresh()}
+
+/* ---------- 体检面板 ---------- */
+function chkCard(c){
+  const L={ok:'通过',warn:'建议处理',fail:'必须处理',info:'说明'}[c.status]||c.status;
+  let h=`<div class="chk ${c.status}"><div class="chk-t"><span class="badge ${c.status==='ok'?'ok':(c.status==='warn'?'warn':(c.status==='fail'?'danger':'info'))}">${ICON[c.status==='ok'?'ok':(c.status==='warn'?'warn':(c.status==='fail'?'fail':'info'))]}${L}</span>${esc(c.title)}</div>
+    <div class="chk-d">${esc(c.detail)}</div>`;
+  if(c.steps&&c.steps.length&&c.status!=='ok'&&c.status!=='info')
+    h+=`<ol>${c.steps.map(s=>`<li>${codeify(s)}</li>`).join('')}</ol>`;
+  if(c.tech)h+=`<details><summary>${ICON.chev}技术细节</summary><div class="body mini mono">${esc(c.tech)}</div></details>`;
+  return h+'</div>';
+}
+function renderDoctor(rep){
+  const g=s=>rep.checks.filter(c=>c.status===s), n=rep.counts||{};
+  const cls=rep.ready?'ok':(n.fail?'bad':'warn');
+  let h=`<div class="doc" style="margin-top:12px">
+    <div class="doc-head ${cls}">
+      <div class="verdict ${cls}">${ICON[rep.ready?'ok':'fail']}${esc(rep.verdict)}</div>
+      <div class="counts">通过 ${n.ok} · 建议 ${n.warn} · 必须 ${n.fail} · 说明 ${n.info}<br>
+        <span class="mono">${esc(rep.serial)} · ${rep.root?'有 root':'无 root'} · ${esc(rep.backend||'')}</span></div>
+    </div>`;
+  if((rep.can||[]).length||(rep.cannot||[]).length){
+    h+=`<div class="ability">`;
+    if((rep.can||[]).length)h+=`<div class="can"><span class="lbl">能做</span>${esc(rep.can.join('；'))}</div>`;
+    if((rep.cannot||[]).length)h+=`<div class="cant"><span class="lbl">做不到</span>${esc(rep.cannot.join('；'))}</div>`;
+    h+=`</div>`;
+  }
+  const guard=g('fail'),warn=g('warn'),ok=g('ok'),info=g('info');
+  if(guard.length)h+=`<div class="sec"><h4 style="color:#ff9a92">${ICON.fail}必须先处理（${guard.length}）</h4>${guard.map(chkCard).join('')}</div>`;
+  if(warn.length)h+=`<div class="sec"><h4 style="color:#f0c674">${ICON.warn}建议处理（${warn.length}）· 不做也能跑，但可能半途失败</h4>${warn.map(chkCard).join('')}</div>`;
+  if(ok.length)h+=`<details><summary>${ICON.chev}${ICON.ok} 已通过（${ok.length}）</summary><div class="body">${ok.map(chkCard).join('')}</div></details>`;
+  if(info.length)h+=`<details><summary>${ICON.chev}${ICON.info} 说明（${info.length}）· 与本方案无关</summary><div class="body">${info.map(chkCard).join('')}</div></details>`;
+  h+=`<div class="sec mini" style="color:var(--text-3)">体检时间 ${new Date((rep.checked_at||0)*1000).toLocaleTimeString()}</div></div>`;
+  return h;
+}
+async function doctor(serial){
+  const out=document.querySelector('#card-'+serial+' .out');
+  spin(out,'正在体检…（约 10-30 秒）');
+  const j=await api('/api/doctor',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({serial})});
+  const rep=(j.devices||[])[0];
+  out.innerHTML=rep&&rep.checks?renderDoctor(rep):`<div class="mini">体检失败：${esc(JSON.stringify(j).slice(0,200))}</div>`;
+}
+async function doctorAll(){for(const c of document.querySelectorAll('.card')){await doctor(c.id.replace('card-',''))}}
+
+/* ---------- 总入口下发 ---------- */
+async function gtask(){
+  const t=document.getElementById('gtext').value;if(!t)return;
+  const target=document.getElementById('gtarget').value,out=document.getElementById('gout');
+  out.classList.add('out');
+  out.innerHTML=`<span class="spinner"></span> agent 正在干活…${target==='all'?'（多台并行，1-4 分钟）':''}`;
+  const body={text:t};if(target==='all')body.devices=['all'];
+  const j=await api('/api/task',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+  if(j.results){
+    out.innerHTML=`<b>扇出 ${j.count} 台：PASS ${j.pass} / FAIL ${j.fail}</b><br>`+
+      j.results.map(r=>`· <span class="mono">${esc(r.serial)}</span> ${esc(r.model||'')} → <b>${esc(r.verdict)}</b>（${r.steps} 步）`).join('<br>');
+  }else{
+    out.innerHTML=`<div style="white-space:pre-wrap">${esc(j.answer||JSON.stringify(j))}</div>
+      <div style="color:var(--text-3);margin-top:6px">${j.steps||'?'} 步 / ${j.elapsed_s||'?'}s / ${esc(j.verdict||'')}</div>`;
+  }
+}
+refresh();setInterval(refresh,8000);
+</script>
+</body>
+</html>

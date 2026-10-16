@@ -1,0 +1,15 @@
+[Unit]
+Description=phone-hub —— 安卓终端农场服务（adb 扫描 / 就绪探测 / 租约 / 能力集 / 执行）
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 /usr/local/share/phone-hub/phone-hub.py serve
+Restart=always
+RestartSec=3
+Environment=PHONE_HUB_PORT=8901
+EnvironmentFile=-/usr/local/share/phone-hub/hub.env
+WorkingDirectory=/usr/local/share/phone-hub
+
+[Install]
+WantedBy=multi-user.target

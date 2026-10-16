@@ -1,0 +1,14 @@
+[Unit]
+Description=phone-wall —— 浏览器手机墙（实时画面 + 点击转发 + 一句话派任务）
+After=network.target phone-hub.service phone-agent.service
+Requires=phone-hub.service
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 /usr/local/share/phone-wall/phone-wall.py
+Restart=always
+RestartSec=3
+Environment=PHONE_WALL_PORT=8910
+
+[Install]
+WantedBy=multi-user.target

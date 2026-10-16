@@ -1,0 +1,16 @@
+[Unit]
+Description=phone-agent —— 36.102 上的手机 agent（一句话 → 自己看环境/连接/认证，像 BU 一样）
+After=network.target phone-hub.service
+Requires=phone-hub.service
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 /usr/local/share/phone-agent/phone-agent.py serve
+Restart=always
+RestartSec=3
+Environment=PHONE_AGENT_PORT=8902
+EnvironmentFile=-/usr/local/share/phone-agent/agent.env
+WorkingDirectory=/usr/local/share/phone-agent
+
+[Install]
+WantedBy=multi-user.target
