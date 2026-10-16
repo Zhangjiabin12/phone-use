@@ -1,7 +1,7 @@
 #!/bin/bash
 echo "=== A) 部署物 vs 位置（md5）==="
 chk(){ [ -f "$2" ] && printf "  %-26s %-52s %s\n" "$1" "$2" "$(md5sum "$2" | cut -c1-12)" || printf "  %-26s %-52s %s\n" "$1" "$2" "缺失!"; }
-chk phone-use.py       /usr/local/share/phone-use/phone-use.py
+chk phone-hand.py      /opt/phone-use/base/phone-hand.py
 chk phone-hub.py       /usr/local/share/phone-hub/phone-hub.py
 chk phone-hub-mcp.py   /usr/local/share/phone-hub/phone-hub-mcp.py
 chk phone-doctor.py    /usr/local/share/phone-hub/phone-doctor.py

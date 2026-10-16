@@ -22,9 +22,10 @@
 
 ```bash
 # 1) 部署服务
-scp src/*.py deploy/*.env deploy/phone-farm deploy/units/*.service \
-    deploy/install-all.sh deploy/install-frozen-base.sh \
-    docs/SKILL-phone-use-wlan.md docs/ONBOARD.md tools/pu-node.py root@<host>:/tmp/
+scp src/*.py deploy/*.env deploy/phone-farm deploy/phone-use deploy/install-all.sh \
+    deploy/install-frozen-base.sh deploy/units/*.service \
+    docs/SKILL-phone-use-wlan.md docs/ONBOARD.md docs/AGENT-PROMPT.md tools/pu-node.py \
+    root@<host>:/tmp/
 ssh root@<host> bash /tmp/install-all.sh
 
 # 2) 冻结底层并生成校验清单
