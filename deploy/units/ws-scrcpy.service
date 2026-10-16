@@ -1,0 +1,15 @@
+[Unit]
+Description=ws-scrcpy —— 浏览器里的 scrcpy（H.264，便携 Node16，端口 8000（墙会自动对准））
+After=network.target
+[Service]
+EnvironmentFile=-/usr/local/share/phone-farm/farm.env
+Type=simple
+WorkingDirectory=/opt/ws-scrcpy
+ExecStart=/opt/node16/bin/node dist/index.js --port 8920
+Restart=always
+RestartSec=3
+Environment=PORT=8920
+Environment=WS_SCRCPY_PORT=8920
+Environment=PATH=/opt/node16/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+[Install]
+WantedBy=multi-user.target
