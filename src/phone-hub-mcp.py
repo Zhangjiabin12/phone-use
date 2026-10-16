@@ -140,12 +140,21 @@ def phone_task(args):
         _t.sleep(5)
         st = http("GET", "/tasks/%s" % jid, base=AGENT_BASE, timeout=30)
         if st.get("status") in ("done", "failed", "cancelled"):
-            res = st.get("result") or {}
-            return {"ok": bool(res.get("ok")), "job": jid, "status": st.get("status"),
-                    "verdict": res.get("verdict"), "serial": res.get("serial"),
-                    "delegated": res.get("delegated"), "steps": res.get("steps"),
-                    "elapsed": res.get("elapsed"), "trace": res.get("trace"),
-                    "answer": str(res.get("answer"))[-4000:]}
+            res = st.get("result")
+            if not isinstance(res, dict):
+                # 作业对象可能把结果平铺在同一层
+                res = {"ok": st.get("ok"), "verdict": st.get("verdict"), "serial": st.get("serial"),
+                       "delegated": st.get("delegated"), "steps": st.get("steps"),
+                       "elapsed": st.get("elapsed") or st.get("elapsed_s"),
+                       "trace": st.get("trace"), "answer": st.get("answer")}
+            v = res.get("verdict")
+            ok = res.get("ok")
+            if ok is None and isinstance(v, str):
+                ok = v in ("PASS", "ANSWER")
+            return {"ok": bool(ok), "job": jid, "status": st.get("status"),
+                    "verdict": v, "serial": res.get("serial"), "delegated": res.get("delegated"),
+                    "steps": res.get("steps"), "elapsed": res.get("elapsed") or res.get("elapsed_s"),
+                    "trace": res.get("trace"), "answer": str(res.get("answer"))[-4000:]}
     return {"ok": True, "job": jid, "status": "running",
             "answer": "等待 %ss 仍未结束；查进度 GET /tasks/%s，放弃 POST /tasks/%s/cancel" % (timeout_s, jid, jid)}
 

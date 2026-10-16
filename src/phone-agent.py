@@ -564,13 +564,19 @@ def submit(text, device="auto", devices=None):
 
 
 def job_view(j):
+    r = j.get("result") or {}
     return {"id": j["id"], "status": j["status"], "text": j["text"][:200], "device": j["device"],
             "devices": j["devices"], "created": j["created"], "started": j["started"],
             "finished": j["finished"],
             "elapsed_s": round((j["finished"] or time.time()) - (j["started"] or j["created"]), 1),
-            "verdict": (j["result"] or {}).get("verdict"),
-            "steps": (j["result"] or {}).get("steps"),
-            "answer": ((j["result"] or {}).get("answer") or "")[:1500]}
+            "ok": r.get("ok"),
+            "verdict": r.get("verdict"),
+            "serial": r.get("serial"),
+            "delegated": r.get("delegated"),
+            "steps": r.get("steps"),
+            "elapsed": r.get("elapsed") if r.get("elapsed") is not None else r.get("elapsed_s"),
+            "trace": r.get("trace"),
+            "answer": (r.get("answer") or "")[:1500]}
 
 
 # ---------------- 服务 ----------------
