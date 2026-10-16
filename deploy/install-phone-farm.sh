@@ -6,7 +6,7 @@ cp -f /tmp/farm.env /usr/local/share/phone-farm/farm.env
 install -m 755 /tmp/phone-farm /usr/local/bin/phone-farm
 
 # 各单元加一行 EnvironmentFile（放在最前，后面的显式 Environment= 仍可覆盖单项）
-for u in phone-hub phone-agent phone-wall ws-scrcpy mihomo; do
+for u in phone-hub phone-agent phone-wall ws-scrcpy; do
   f=/etc/systemd/system/$u.service
   [ -f "$f" ] || continue
   if ! grep -q 'phone-farm/farm.env' "$f"; then
@@ -19,7 +19,7 @@ PY
   fi
 done
 systemctl daemon-reload
-for u in phone-hub phone-agent phone-wall ws-scrcpy mihomo; do systemctl restart $u 2>/dev/null || true; done
+for u in phone-hub phone-agent phone-wall ws-scrcpy; do systemctl restart $u 2>/dev/null || true; done
 sleep 6
 echo "=== 验证 phone-farm ==="
 phone-farm ports
