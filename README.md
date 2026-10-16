@@ -95,23 +95,31 @@ phone-agent "体检一下 57ada8"                                # 新机接入�
 ## 6. 文件说明
 
 ```
-phone-use.py          # 原语 CLI：tap/swipe/text/key/ui/find/click-*/scan/wifi/probe/wifi-connect/jar…
-phone-hub.py          # 农场 API + 租约硬闸 + 体检端点（:8901）
-phone-agent.py        # 一句话总入口，LLM agent（:8902）
-phone-doctor.py       # 新机接入体检（人话输出 + 颜色分档 + 怎么修）
-phone-wall-svc.py     # 手机墙服务（:8910）
-wall-page.html        # 手机墙页面（设计令牌 + SVG 图标 + 内嵌 H.264 流）
-phone-hub-mcp.py      # 给 MCP 客户端的最小工具面（devices_list/phone_exec/run_devices/lease…）
-pu-jar/               # 注入用 jar 的 Java 源码（配合 build-pu-jar.sh 构建）
-build-pu-jar.sh       # 构建 pu.jar
-install-all.sh        # 幂等部署：所有文件 + systemd 单元 + 自检
-SKILL-phone-use-wlan.md  # 给 agent 的 runbook（8901 的 /skill 供出，agent 照着干）
-ONBOARD.md            # 新机接入清单：10 步 + 六类坑 + 状态表 + 命令速查
-hub.env / agent.env   # 租约与回收阈值、agent 参数
-*.service             # systemd 单元
-ops/                  # 运维脚本（代理、ws-scrcpy、端口清理）
-legacy/               # 已淘汰组件（旧单机投屏 phone-view）
-docs/img/             # 截图证据
+phone-use/
+├── README.md                     # 本文件（架构/难点/机型矩阵/限制）
+├── src/                          # 全部服务源码
+│   ├── phone-use.py              #   原语 CLI（tap/swipe/ui/find/scan/wifi/probe/jar…）
+│   ├── phone-hub.py              #   农场 API + 租约硬闸 + 体检端点（:8901）
+│   ├── phone-hub-mcp.py          #   给 MCP 客户端的最小工具面
+│   ├── phone-agent.py            #   一句话总入口，LLM agent（:8902）
+│   ├── phone-doctor.py           #   新机接入体检（人话结论 + 怎么修）
+│   ├── wall/                     #   手机墙（:8910）
+│   │   ├── phone-wall.py
+│   │   └── wall-page.html
+│   └── jar/                      #   注入 jar：build-pu-jar.sh + Java 源码
+├── deploy/                       # 部署物
+│   ├── install-all.sh            #   幂等部署（上传到 /tmp 后一条命令装完）
+│   ├── phone-farm                #   统一入口：status/start/stop/restart/logs/config/doctor
+│   ├── farm.env                  #   ★ 唯一配置文件（端口/租约阈值/agent 参数）
+│   ├── hub.env / agent.env       #   细项覆盖
+│   └── units/*.service           #   systemd 单元
+├── tools/                        # pu-node.py、pu-find.py（jar 辅助脚本）
+├── ops/                          # 运维脚本（代理 mihomo、ws-scrcpy 高清流、端口清理…）
+├── docs/                         # 文档与截图
+│   ├── ONBOARD.md                #   新机接入清单（10 步 + 六类坑）
+│   ├── SKILL-phone-use-wlan.md   #   给 agent 的 runbook（8901 /skill 供出）
+│   └── img/                      #   实测证据截图
+└── legacy/                       # 已淘汰组件（旧单机投屏等）
 ```
 
 ---
@@ -122,17 +130,17 @@ docs/img/             # 截图证据
 # 1) 依赖：adb、python3、usb 直连（或 adb over tcp）
 adb devices
 
-# 2) 部署（幂等，可重复跑）
-scp *.py *.html *.env *.service install-all.sh build-pu-jar.sh root@<host>:/tmp/
+# 2) 部署（幂等，可重复跑；配置只改 deploy/farm.env）
+scp src/*.py src/wall/* deploy/*.env deploy/phone-farm deploy/units/*.service docs/*.md tools/pu-node.py root@<host>:/tmp/
 ssh root@<host> bash /tmp/install-all.sh
 
 # 3) 体检一台新机（人话结论 + 怎么修）
 phone-doctor <serial>
 
 # 4) 手机墙
-open http://<host>:8910/
+phone-farm status            # 统一看服务/端口/终端/墙地址
 
-# 5) 一句话下单
+# 5) 一句话下单（或直接在手机墙上输入）
 phone-agent "连 928wpa2-psk 密码 12345678"
 ```
 
