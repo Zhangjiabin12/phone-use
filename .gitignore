@@ -27,3 +27,6 @@ ops/*.ps1
 ops/*proxy*
 ops/*clash*
 
+
+ops/ports-and-cleanup.sh
+
