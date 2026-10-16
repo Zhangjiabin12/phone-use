@@ -28,7 +28,7 @@ s = open(p, encoding='utf-8').read()
 verbs = r'(state|wifi|list|scan|probe|failure|backend|ui|find|click-text|click-desc|click-id|click-xy|settext|scroll|scroll-up|global|tap|swipe|key|input|shot|pull|http|httpfile|shell|wifi-connect|wifi-forget|jar|tap\b)'
 s2 = re.sub(r'phone-use\s+(' + verbs + r')', r'phone-hand \1', s)
 # phone-look 内部调用是 subprocess 里的 "phone-use" → phone-hand
-s2 = s2.replace('"phone-use", "shot"', '"phone-hand", "shot"').replace('"phone-use", "pull"', '"phone-hand", "pull"')
+s2 = s2.replace('"phone-hand", "shot"', '"phone-hand", "shot"').replace('"phone-hand", "pull"', '"phone-hand", "pull"')
 open(p, 'w', encoding='utf-8').write(s2)
 n = s2.count('phone-hand')
 print("  %-22s → phone-hand 出现 %d 次" % (p.split('/')[-1], n))
@@ -93,4 +93,4 @@ echo -n "  守卫: "; phone-hand state >/dev/null 2>&1 && echo OK || echo FAIL
 echo -n "  原语(phone-hand wifi @华为): "; ANDROID_SERIAL=CTV0221202007036 phone-hand wifi 2>&1 | head -c 150; echo
 echo -n "  入口(phone-use 给任务): "; phone-use "运行 curl -s http://127.0.0.1:8901/devices，一句话列出每台 serial/usable。不要做别的。" --timeout 300 2>&1 | tail -8
 echo -n "  旧名字是否已无: "; command -v pu-run >/dev/null && echo "pu-run 还在!" || echo "pu-run 已删 ✓"
-echo -n "  旧写法 phone-use wifi 的现行为: "; ANDROID_SERIAL=CTV0221202007036 phone-use wifi 2>&1 | head -3 | tr '\n' ' '; echo
+echo -n "  旧写法 phone-hand wifi 的现行为: "; ANDROID_SERIAL=CTV0221202007036 phone-hand wifi 2>&1 | head -3 | tr '\n' ' '; echo

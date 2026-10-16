@@ -38,7 +38,7 @@ echo "  $(ls -ld $PU | awk '{print $1,$3":"$4,$9}')"
 
 echo
 echo "=== 4) 权限与能力复验（phonebot）==="
-echo -n "  phone-use state: "; sudo -iu phonebot bash -lc 'ANDROID_SERIAL=CTV0221202007036 phone-use state 2>&1 | head -c 120'; echo
+echo -n "  phone-hand state: "; sudo -iu phonebot bash -lc 'ANDROID_SERIAL=CTV0221202007036 phone-hand state 2>&1 | head -c 120'; echo
 echo -n "  adb devices(经 TCP server): "; sudo -iu phonebot bash -lc 'adb devices 2>&1 | head -3' | tr '\n' ' '; echo
 echo -n "  phone-look（眼睛）: "; sudo -iu phonebot bash -lc 'phone-look CTV0221202007036 "一句话：什么页面" 2>&1 | head -3' | tr '\n' ' '; echo
 echo -n "  写 base（应仍被拒）: "; sudo -u phonebot bash -lc 'echo x >> /opt/phone-use/base/SKILL.md' 2>&1 | head -1

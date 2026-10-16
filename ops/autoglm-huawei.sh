@@ -20,7 +20,7 @@ export PHONE_AGENT_BASE_URL=http://131.255.36.100:30001/v1 \
 timeout 900 /opt/autoglm/venv/bin/python main.py "打开设置，进入 WLAN 页面，告诉我当前连接的是哪个 WiFi" 2>&1 | tail -100
 echo "RC=$?"
 echo "=== 2) 跑完抓一张现场图 ==="
-ANDROID_SERIAL=$DEV phone-use shot /sdcard/ag_after.png >/dev/null 2>&1
-ANDROID_SERIAL=$DEV phone-use pull /sdcard/ag_after.png /tmp/ag_after.png >/dev/null 2>&1
+ANDROID_SERIAL=$DEV phone-hand shot /sdcard/ag_after.png >/dev/null 2>&1
+ANDROID_SERIAL=$DEV phone-hand pull /sdcard/ag_after.png /tmp/ag_after.png >/dev/null 2>&1
 ls -l /tmp/ag_after.png 2>/dev/null
 echo "AUTOGLM_HW_DONE"

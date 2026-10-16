@@ -54,7 +54,7 @@ ADD
 cp -f /opt/phone-use/work/copies/SKILL.md.$TS $BASE/SKILL.md
 chmod 444 $BASE/SKILL.md
 ( cd $BASE && sha256sum * > /opt/phone-use/base.sha256 )
-phone-use state >/dev/null 2>&1 && echo "  守卫 OK（新指纹已生效）" || echo "  守卫 失败"
+phone-hand state >/dev/null 2>&1 && echo "  守卫 OK（新指纹已生效）" || echo "  守卫 失败"
 grep -c "实测踩坑" $BASE/SKILL.md | sed 's/^/  SKILL 含新坑: /'
 
 echo

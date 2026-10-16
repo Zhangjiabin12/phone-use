@@ -30,7 +30,7 @@ done
 
 echo
 echo "== scan 解析（华为格式）修复验证 =="
-ANDROID_SERIAL=CTV0221202007036 timeout 90 phone-use scan | python3 -c "
+ANDROID_SERIAL=CTV0221202007036 timeout 90 phone-hand scan | python3 -c "
 import json,sys
 r=json.load(sys.stdin)['results']
 print('  扫到 %d 个；前 3：' % len(r), [(x['ssid'] or '(隐藏)', x['freq_mhz'], x['rssi']) for x in r[:3]])"

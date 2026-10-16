@@ -27,7 +27,7 @@ print("  语法 OK")
 PY
 cp -f "$NEW" $BASE/phone-look && chmod 555 $BASE/phone-look
 ( cd $BASE && sha256sum * > /opt/phone-use/base.sha256 )
-phone-use state >/dev/null 2>&1 && echo "  守卫 OK" || echo "  守卫 失败"
+phone-hand state >/dev/null 2>&1 && echo "  守卫 OK" || echo "  守卫 失败"
 
 KEY=$(grep -oP '^BU_LLM_API_KEY=\K.*' /opt/webui-mcp/bu/bu.env | tr -d '"' | tr -d "'" | tr -d '\r')
 echo "== 以 mp 复测（带 key，应成功）=="

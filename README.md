@@ -81,7 +81,7 @@ phone-agent "体检一下 57ada8"                                # 新机接入�
   · 华为浏览器里的门户页表单【没进无障碍树】（ui account=0）→ 填不进去 → agent 耗尽步数
 
 协议式（一次成功）：
-  phone-use jar portal-login <账号> <密码>
+  phone-hand jar portal-login <账号> <密码>
   → {"code":"0","message":"NO_ERROR"}，复核 http://1.1.1.1/ 由 302 变 301（不再被拦）
 ```
 
@@ -183,11 +183,15 @@ phone-agent "连 928wpa2-psk 密码 12345678"
 【底层】/opt/phone-use/base 只读 + sha256 守卫；改动只能 cp 到 work/copies/
 ```
 
-### 入口
+### 三个名字（对外只有这三个）
 ```bash
-pu-run "连 test-portal2 做 portal 认证，账号 zjb 密码 123456" [--timeout 900]
-# 一次运行留三份档：logs/run-<ts>.jsonl（全事件轨迹）/ .md（人读摘要）/ .err（stderr）
+phone-use "连 test-portal2 做 portal 认证，账号 zjb 密码 123456"   # 给任务（默认留全轨迹：logs/run-<ts>.{jsonl,md,err}）
+phone-use "…" --device <serial> --timeout 900                     # 指定终端 / 超时
+phone-use logs                                                    # 看历史运行
+phone-hand wifi | probe | tap X Y | click-text "登录" …           # 原语（AI 的手；带 sha256 守卫）
+phone-look <serial> "现在什么页面？"                               # 看（AI 的眼）
 ```
+`pu-run` 这个名字已取消，留档能力并入 `phone-use`；旧写法 `phone-use <原语>` 不再兼容（直接用 `phone-hand <原语>`）。
 
 ### 关键工程细节（都踩过坑）
 | 项 | 结论 |

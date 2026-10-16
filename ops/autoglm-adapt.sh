@@ -49,20 +49,20 @@ case "${cmd[0]}" in
     sub="${cmd[1]:-}"
     case "$sub" in
       tap)
-        if ANDROID_SERIAL="$serial" timeout 60 phone-use tap "${cmd[2]}" "${cmd[3]}" 2>/dev/null | grep -q '"ok": *true'; then
+        if ANDROID_SERIAL="$serial" timeout 60 phone-hand tap "${cmd[2]}" "${cmd[3]}" 2>/dev/null | grep -q '"ok": *true'; then
           echo "phone-use: tap ${cmd[2]} ${cmd[3]} ok"; exit 0
         fi ;;
       swipe)
-        if ANDROID_SERIAL="$serial" timeout 60 phone-use swipe "${cmd[2]}" "${cmd[3]}" "${cmd[4]}" "${cmd[5]}" "${cmd[6]:-300}" 2>/dev/null | grep -q '"ok": *true'; then
+        if ANDROID_SERIAL="$serial" timeout 60 phone-hand swipe "${cmd[2]}" "${cmd[3]}" "${cmd[4]}" "${cmd[5]}" "${cmd[6]:-300}" 2>/dev/null | grep -q '"ok": *true'; then
           echo "phone-use: swipe ok"; exit 0
         fi ;;
       keyevent)
-        if ANDROID_SERIAL="$serial" timeout 60 phone-use key "${cmd[2]}" 2>/dev/null | grep -q '"ok": *true'; then
+        if ANDROID_SERIAL="$serial" timeout 60 phone-hand key "${cmd[2]}" 2>/dev/null | grep -q '"ok": *true'; then
           echo "phone-use: key ${cmd[2]} ok"; exit 0
         fi ;;
       text)
         txt="${cmd[*]:2}"
-        if ANDROID_SERIAL="$serial" timeout 60 phone-use input "$txt" 2>/dev/null | grep -q '"ok": *true'; then
+        if ANDROID_SERIAL="$serial" timeout 60 phone-hand input "$txt" 2>/dev/null | grep -q '"ok": *true'; then
           echo "phone-use: input ok"; exit 0
         fi ;;
     esac ;;

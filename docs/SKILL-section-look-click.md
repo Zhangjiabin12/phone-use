@@ -10,17 +10,17 @@ phone-look <serial> --coord "WLAN 列表里 'test-portal2' 这一项"   # 额外
 ```
 - 它内部做：`screencap → 取回本地 → 交给视觉模型（deepseek-flash，已实测能准确读真机截图）→ 回文本`
 - 结论里若带 `TAP=x,y`，就是可直接点的**设备绝对坐标**
-- 想要原始截图存档（备查/给人看）：`phone-use shot /sdcard/s.png` + `phone-use pull /sdcard/s.png /tmp/s.png`
-- **坐标永远是设备真实分辨率**（先 `phone-use state` 读 `screen`）：华为 1236×2676、小米 1080×2340 —— **别猜**
+- 想要原始截图存档（备查/给人看）：`phone-hand shot /sdcard/s.png` + `phone-hand pull /sdcard/s.png /tmp/s.png`
+- **坐标永远是设备真实分辨率**（先 `phone-hand state` 读 `screen`）：华为 1236×2676、小米 1080×2340 —— **别猜**
 
 ### 二、点屏幕：三级精度，从上到下选（能用上面的就别用下面的）
 | 级别 | 命令 | 什么时候用 |
 |---|---|---|
-| ① 语义点击（最稳） | `phone-use click-text "登录"` / `click-desc "下一步"` / `click-id !account` | 控件有文字/描述/id（设置项、按钮、WebView 表单） |
-| ② 元素定位（推荐默认） | `phone-use find "WLAN"` / `ui WLAN` → 拿到 `bounds` → 算中心 → `phone-use click-xy X Y` | 有控件但文字不唯一；**P3 机型（只能节点动作）也只有这条路** |
-| ③ 视觉估坐标 | `phone-look --coord "…"` → `phone-use tap X Y` | 自绘界面 / WebView 不暴露元素 / 上面两条都失败时 |
-- 输入文字：`phone-use settext --id !account "zjb"`（优先）或 `phone-use input "文本"`；有 root 也可 `key`
-- 按键：`phone-use key back|home|app_switch|enter…`；**不要用 `adb shell input`**（MIUI/HyperOS 会被 `INJECT_EVENTS` 拦；`phone-use` 会自动按 P1 root / P2 input / P3 jar 回退）
+| ① 语义点击（最稳） | `phone-hand click-text "登录"` / `click-desc "下一步"` / `click-id !account` | 控件有文字/描述/id（设置项、按钮、WebView 表单） |
+| ② 元素定位（推荐默认） | `phone-hand find "WLAN"` / `ui WLAN` → 拿到 `bounds` → 算中心 → `phone-hand click-xy X Y` | 有控件但文字不唯一；**P3 机型（只能节点动作）也只有这条路** |
+| ③ 视觉估坐标 | `phone-look --coord "…"` → `phone-hand tap X Y` | 自绘界面 / WebView 不暴露元素 / 上面两条都失败时 |
+- 输入文字：`phone-hand settext --id !account "zjb"`（优先）或 `phone-hand input "文本"`；有 root 也可 `key`
+- 按键：`phone-hand key back|home|app_switch|enter…`；**不要用 `adb shell input`**（MIUI/HyperOS 会被 `INJECT_EVENTS` 拦；`phone-use` 会自动按 P1 root / P2 input / P3 jar 回退）
 
 ### 三、判定纪律（不许拿返回码当成功）
 - 上线成功 = `wifi` 里 **ssid 匹配 + supplicant=COMPLETED + ip 非空**

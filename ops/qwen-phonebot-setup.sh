@@ -18,7 +18,7 @@ echo "  base 权限（phonebot 只读）: $(stat -c '%A %U:%G' /opt/phone-use/ba
 
 echo
 echo "=== 3) phonebot 能不能用我们的原语 + 能不能碰 adb ==="
-sudo -u phonebot bash -lc 'ANDROID_SERIAL=CTV0221202007036 phone-use state 2>&1 | head -c 160' ; echo
+sudo -u phonebot bash -lc 'ANDROID_SERIAL=CTV0221202007036 phone-hand state 2>&1 | head -c 160' ; echo
 echo -n "  phonebot 直接 adb devices: "; sudo -u phonebot bash -lc 'adb devices 2>&1 | head -3' | tr '\n' ' '; echo
 echo -n "  phonebot 走 root 的 adb server（TCP）: "
 sudo -u phonebot bash -lc 'export ADB_SERVER_SOCKET=tcp:127.0.0.1:5037; adb devices 2>&1 | head -4' | tr '\n' ' '; echo

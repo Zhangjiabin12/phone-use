@@ -30,8 +30,8 @@ for p in targets:
         continue
     o = s
     s = re.sub(r'phone-use\s+' + VERBS + r'\b', r'phone-hand \1', s)
-    s = s.replace('"phone-use", "shot"', '"phone-hand", "shot"').replace('"phone-use", "pull"', '"phone-hand", "pull"')
-    s = s.replace("'phone-use', 'shot'", "'phone-hand', 'shot'").replace("'phone-use', 'pull'", "'phone-hand', 'pull'")
+    s = s.replace('"phone-hand", "shot"', '"phone-hand", "shot"').replace('"phone-hand", "pull"', '"phone-hand", "pull"')
+    s = s.replace("'phone-hand', 'shot'", "'phone-hand', 'shot'").replace("'phone-hand', 'pull'", "'phone-hand', 'pull'")
     if s != o:
         open(p, 'w', encoding='utf-8').write(s)
         changed.append(os.path.relpath(p, ROOT))

@@ -25,7 +25,7 @@ echo "== 2) 提升到 base + 重算指纹 =="
 cp -f "$NEW" $BASE/phone-look && chmod 555 $BASE/phone-look
 ( cd $BASE && sha256sum * > /opt/phone-use/base.sha256 )
 echo "  指纹: $(grep phone-look $BASE/../base.sha256 | cut -c1-16)  文件: $(ls -l $BASE/phone-look | awk '{print $1}')"
-phone-use state >/dev/null 2>&1 && echo "  守卫: OK" || echo "  守卫: 失败"
+phone-hand state >/dev/null 2>&1 && echo "  守卫: OK" || echo "  守卫: 失败"
 
 echo "== 3) 以 mp 复测（qwen 会把 settings.json 的 env 传给子进程）=="
 KEY=$(grep -oP '^BU_LLM_API_KEY=\K.*' /opt/webui-mcp/bu/bu.env | tr -d '"' | tr -d "'" | tr -d '\r')
