@@ -10,6 +10,7 @@
 | 8902 | `phone-agent` | 一句话任务接口；将任务转交任务主体执行 | 人、平台 |
 | 8901 | `phone-hub` | 终端清单、能力集、版本、占用闸、体检接口、原语执行接口 | 程序 |
 | 8000 | `ws-scrcpy` | 画面视频流，由 8910 内嵌 | 仅 8910 |
+| 8903 | `phone-mcp` | 手机工具面 MCP（streamable-http，路径 /mcp） | 平台 AI、远端 agent |
 
 调用关系：
 
@@ -33,7 +34,7 @@
 | 工作目录 | `/opt/phone-use/pu`，项目级配置在该目录的 `.qwen/` 下 |
 | 任务入口 | `/usr/local/bin/phone-use`；每次运行保存轨迹，见 README 4.1 |
 | 接口接入 | 项目级 `settings.json` 的 `env` 配置模型与密钥，`mcpServers` 接入 `phone-hub` |
-| 对外接口 | MCP 为本地 stdio，仅任务主体使用；外部对接统一走 HTTP `POST :8902/task`（同步）或 `POST :8902/tasks`（异步作业） |
+| 对外接口 | HTTP：`POST :8902/task`（同步）、`POST :8902/tasks`（异步作业）；MCP：`:8903/mcp`（网络）、本地 stdio（仅任务主体） |
 
 接口契约（同步 `/task` 与异步 `/tasks` 字段一致）：
 

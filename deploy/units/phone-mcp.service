@@ -1,0 +1,14 @@
+[Unit]
+Description=phone-mcp —— 手机工具面 MCP（streamable-http :8903）
+After=network.target phone-hub.service
+
+[Service]
+Type=simple
+EnvironmentFile=-/usr/local/share/phone-farm/farm.env
+EnvironmentFile=-/opt/phone-mcp/mcp.env
+ExecStart=/opt/phone-mcp/venv/bin/python /opt/phone-mcp/phone-mcp-http.py
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

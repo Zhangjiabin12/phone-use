@@ -55,6 +55,7 @@ phone-farm config              # 查看生效配置
 | 8902 | 一句话任务接口 |
 | 8901 | 终端清单、能力集、占用状态、体检接口 |
 | 8000 | 手机画面视频流，由浏览器界面内嵌 |
+| 8903 | 手机工具面 MCP（streamable-http，路径 /mcp），供平台 AI 调用 |
 
 浏览器访问 `http://<host>:8910/`。
 
@@ -154,6 +155,14 @@ curl -X POST http://<host>:8902/tasks/job003/cancel       # 取消并释放终�
 异步作业的 `status` 取值：`running` / `done` / `failed` / `cancelled`。
 
 本机 MCP 工具面另提供 `phone_task(text, device, max_steps, timeout_s)`，走同一异步接口，字段与上表一致。
+
+网络 MCP 服务 `phone-mcp` 监听 8903，路径 `/mcp`，传输 streamable-http，工具面与上表一致：
+
+```
+工具：devices_list · phone_task · phone_exec · phone_skill · lease_device · release_device
+地址：http://<host>:8903/mcp
+```
+客户端只需配置该地址；鉴权可选，设置 `/opt/phone-mcp/mcp.env` 的 `PHONE_MCP_TOKEN` 后需带 `Authorization: Bearer <token>`。
 
 ### 4.5 新机接入
 

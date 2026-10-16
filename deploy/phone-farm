@@ -1,17 +1,17 @@
 #!/bin/bash
 # phone-farm —— 手机农场的统一入口：状态 / 启动 / 停止 / 重启 / 日志 / 配置 / 体检
-# 管理 4 个单元：hub(8901) agent(8902) wall(8910) scrcpy(8000)（出网代理属环境，不在此列）
+# 管理 6 个单元：hub(8901) agent(8902) wall(8910) scrcpy(8000) mcp(8903) proxy(7890)
 set -uo pipefail
 CONF=/usr/local/share/phone-farm/farm.env
 [ -r "$CONF" ] && set -a && . "$CONF" && set +a
 
-declare -A UNIT=( [hub]=phone-hub [agent]=phone-agent [wall]=phone-wall [scrcpy]=ws-scrcpy )
+declare -A UNIT=( [hub]=phone-hub [agent]=phone-agent [wall]=phone-wall [scrcpy]=ws-scrcpy [proxy]=mihomo [mcp]=phone-mcp )
 declare -A DESC=( [hub]="农场 API（清单/能力/租约/体检/exec）" [agent]="一句话总入口（LLM agent）" \
-                  [wall]="手机墙（人用主界面）" [scrcpy]="H.264 视频流后端" [proxy]="出网代理" )
+                  [wall]="手机墙（人用主界面）" [scrcpy]="H.264 视频流后端" [proxy]="出网代理" [mcp]="手机工具面 MCP（给平台 AI）" )
 declare -A PORT=( [hub]=${PHONE_FARM_PORT_HUB:-8901} [agent]=${PHONE_FARM_PORT_AGENT:-8902} \
-                  [wall]=${PHONE_FARM_PORT_WALL:-8910} [scrcpy]=${PHONE_FARM_PORT_SCRCPY:-8000} \
+                  [wall]=${PHONE_FARM_PORT_WALL:-8910} [scrcpy]=${PHONE_FARM_PORT_SCRCPY:-8000} [mcp]=${PHONE_FARM_PORT_MCP:-8903} \
                   [proxy]=${PHONE_FARM_PORT_PROXY:-7890} )
-ORDER=(hub agent wall scrcpy)            # 依赖顺序：后端 → 前端
+ORDER=(proxy hub agent wall scrcpy mcp)      # 依赖顺序：先代理，再后端，最后前端
 
 c_ok=$'\033[32m'; c_bad=$'\033[31m'; c_dim=$'\033[2m'; c_b=$'\033[1m'; c_0=$'\033[0m'
 
@@ -63,7 +63,7 @@ cmd_ctl(){ # $1=start|stop|restart  $2..=组件或 all
 cmd_logs(){ # $1=组件(可省,默认 all) 其余参数透传 journalctl
   local k=${1:-all}; shift 2>/dev/null || true
   if [ "$k" = all ]; then
-    journalctl -u phone-hub -u phone-agent -u phone-wall -u ws-scrcpy "$@"
+    journalctl -u phone-hub -u phone-agent -u phone-wall -u ws-scrcpy -u mihomo -u phone-mcp "$@"
   else
     local u=${UNIT[$k]:-}; [ -z "$u" ] && { echo "未知组件: $k"; exit 1; }
     journalctl -u "$u" "$@"
@@ -73,11 +73,13 @@ cmd_logs(){ # $1=组件(可省,默认 all) 其余参数透传 journalctl
 cmd_config(){
   echo "生效配置 $CONF："; grep -vE '^\s*#|^\s*$' "$CONF" | sed 's/^/  /'
   echo; echo "覆盖检查（单元里显式写死的 Environment= 会盖过本文件）："
-  for u in phone-hub phone-agent phone-wall ws-scrcpy; do
+  for u in phone-hub phone-agent phone-wall ws-scrcpy mihomo phone-mcp; do
     printf "  %-14s %s\n" "$u" "$(systemctl show -p Environment "$u" 2>/dev/null | cut -c1-150)"
   done
 }
 
+FASTPORT=1
+if [ "${1:-}" = "ports" ]; then for k in "${ORDER[@]}"; do printf "  %-8s %s\n" "$k" "${PORT[$k]}"; done; exit 0; fi
 case "${1:-status}" in
   status|st)   cmd_status ;;
   start|stop|restart) cmd_ctl "$@" ;;
