@@ -1,0 +1,100 @@
+#!/bin/bash
+# phone-farm —— 手机农场的统一入口：状态 / 启动 / 停止 / 重启 / 日志 / 配置 / 体检
+# 管理 5 个单元：hub(8901) agent(8902) wall(8910) scrcpy(8000) proxy(7890)
+set -uo pipefail
+CONF=/usr/local/share/phone-farm/farm.env
+[ -r "$CONF" ] && set -a && . "$CONF" && set +a
+
+declare -A UNIT=( [hub]=phone-hub [agent]=phone-agent [wall]=phone-wall [scrcpy]=ws-scrcpy [proxy]=mihomo )
+declare -A DESC=( [hub]="农场 API（清单/能力/租约/体检/exec）" [agent]="一句话总入口（LLM agent）" \
+                  [wall]="手机墙（人用主界面）" [scrcpy]="H.264 视频流后端" [proxy]="出网代理" )
+declare -A PORT=( [hub]=${PHONE_FARM_PORT_HUB:-8901} [agent]=${PHONE_FARM_PORT_AGENT:-8902} \
+                  [wall]=${PHONE_FARM_PORT_WALL:-8910} [scrcpy]=${PHONE_FARM_PORT_SCRCPY:-8000} \
+                  [proxy]=${PHONE_FARM_PORT_PROXY:-7890} )
+ORDER=(proxy hub agent wall scrcpy)      # 依赖顺序：先代理，再后端，最后前端
+
+c_ok=$'\033[32m'; c_bad=$'\033[31m'; c_dim=$'\033[2m'; c_b=$'\033[1m'; c_0=$'\033[0m'
+
+http_code(){ curl -s -m 5 -o /dev/null -w '%{http_code}' "http://127.0.0.1:$1/${2:-}" 2>/dev/null; }
+
+cmd_status(){
+  printf "%s手机农场状态%s（配置 %s）\n" "$c_b" "$c_0" "$CONF"
+  printf "  %-8s %-16s %-6s %-7s %s\n" 组件 单元 状态 端口 说明
+  for k in "${ORDER[@]}"; do
+    u=${UNIT[$k]}; p=${PORT[$k]}
+    a=$(systemctl is-active "$u" 2>/dev/null || true)
+    code=$(http_code "$p")
+    [ "$code" = "000" ] && code="—"
+    st=$([ "$a" = active ] && echo "${c_ok}运行中${c_0}" || echo "${c_bad}$a${c_0}")
+    printf "  %-8s %-16s %-15s %-7s %s\n" "$k" "$u" "$st" "$p/$code" "${DESC[$k]}"
+  done
+  echo
+  if [ "$(http_code "${PORT[hub]}" devices)" != "000" ]; then
+    curl -s -m 8 "http://127.0.0.1:${PORT[hub]}/devices" | python3 -c '
+import json,sys
+d=json.load(sys.stdin)
+ds=d["devices"]
+print("  终端：%d 台在线 / %d 空闲 / %d 占用 / %d 台可用（无人值守）" % (
+    sum(1 for x in ds if x.get("present")), sum(1 for x in ds if x.get("state")=="idle"),
+    sum(1 for x in ds if x.get("state")=="busy"), sum(1 for x in ds if x.get("usable"))))
+for x in d["devices"]:
+    b=[i["id"] for i in x.get("blockers",[])]
+    print("    %-16s %-13s %-16s usable=%-5s %s" % (x["serial"], (x.get("model") or "?")[:13],
+          x["backend"], x.get("usable"), ("阻塞:"+",".join(b)) if b else ""))
+' 2>/dev/null || echo "  （hub 未返回设备列表）"
+  fi
+  echo
+  echo "  人用主界面:  ${c_b}http://$(hostname -I | awk '{print $1}'):${PORT[wall]}/${c_0}"
+}
+
+cmd_ctl(){ # $1=start|stop|restart  $2..=组件或 all
+  local act=$1; shift
+  local list=("$@"); [ ${#list[@]} -eq 0 ] && list=(all)
+  [ "${list[0]}" = all ] && list=("${ORDER[@]}")
+  [ "$act" = stop ] && list=($(printf '%s\n' "${ORDER[@]}" | tac))   # 停的时候反序
+  for k in "${list[@]}"; do
+    u=${UNIT[$k]:-}; [ -z "$u" ] && { echo "  未知组件: $k（可选 ${!UNIT[*]} all）"; continue; }
+    systemctl "$act" "$u" >/dev/null 2>&1
+    printf "  %-8s %-8s → %s\n" "$k" "$act" "$(systemctl is-active "$u" 2>/dev/null)"
+  done
+  [ "$act" != stop ] && sleep 2 && cmd_status
+}
+
+cmd_logs(){ # $1=组件(可省,默认 all) 其余参数透传 journalctl
+  local k=${1:-all}; shift 2>/dev/null || true
+  if [ "$k" = all ]; then
+    journalctl -u phone-hub -u phone-agent -u phone-wall -u ws-scrcpy -u mihomo "$@"
+  else
+    local u=${UNIT[$k]:-}; [ -z "$u" ] && { echo "未知组件: $k"; exit 1; }
+    journalctl -u "$u" "$@"
+  fi
+}
+
+cmd_config(){
+  echo "生效配置 $CONF："; grep -vE '^\s*#|^\s*$' "$CONF" | sed 's/^/  /'
+  echo; echo "覆盖检查（单元里显式写死的 Environment= 会盖过本文件）："
+  for u in phone-hub phone-agent phone-wall ws-scrcpy mihomo; do
+    printf "  %-14s %s\n" "$u" "$(systemctl show -p Environment "$u" 2>/dev/null | cut -c1-150)"
+  done
+}
+
+case "${1:-status}" in
+  status|st)   cmd_status ;;
+  start|stop|restart) cmd_ctl "$@" ;;
+  logs|log)    cmd_logs "${@:2}" ;;
+  config|conf) cmd_config ;;
+  doctor)      shift; exec phone-doctor "$@" ;;
+  ports)       for k in "${ORDER[@]}"; do printf "  %-8s %s\n" "$k" "${PORT[$k]}"; done ;;
+  *) cat <<EOF
+phone-farm —— 手机农场统一入口
+
+  phone-farm status              状态总览（服务 + 端口 + 终端 + 墙地址）
+  phone-farm start|stop|restart [组件|all]
+                                 组件: ${!UNIT[*]}（默认 all，按依赖顺序）
+  phone-farm logs [组件|all] [-f] [--since 10m]
+  phone-farm config              打印生效配置与单元覆盖情况
+  phone-farm doctor [serial]     新机接入体检（等价 phone-doctor）
+  phone-farm ports               端口表
+EOF
+  ;;
+esac
