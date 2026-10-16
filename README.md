@@ -113,7 +113,6 @@ phone-use/
 │   ├── hub.env / agent.env       #   细项覆盖
 │   └── units/*.service           #   systemd 单元
 ├── tools/                        # pu-node.py、pu-find.py（jar 辅助脚本）
-├── ops/                          # 运维脚本（代理 mihomo、ws-scrcpy 高清流、端口清理…）
 ├── docs/                         # 文档与截图
 │   ├── ONBOARD.md                #   新机接入清单（10 步 + 六类坑）
 │   ├── SKILL-phone-use-wlan.md   #   给 agent 的 runbook（8901 /skill 供出）
