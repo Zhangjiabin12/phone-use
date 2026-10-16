@@ -16,3 +16,7 @@ pu.jar
 # 与本项目无关（AC/AP Web 测试通道）
 webui-mcp/
 
+
+# 本地一次性脚本
+ops/*.ps1
+
