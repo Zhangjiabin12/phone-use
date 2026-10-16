@@ -162,7 +162,7 @@ curl -X POST http://<host>:8902/tasks/job003/cancel       # 取消并释放终�
 工具：devices_list · phone_task · phone_exec · phone_skill · lease_device · release_device
 地址：http://<host>:8903/mcp
 ```
-客户端只需配置该地址；鉴权可选，设置 `/opt/phone-mcp/mcp.env` 的 `PHONE_MCP_TOKEN` 后需带 `Authorization: Bearer <token>`。
+客户端只需配置该地址；接入方法与工具清单见 `docs/MCP.md`。鉴权可选，设置 `/opt/phone-mcp/mcp.env` 的 `PHONE_MCP_TOKEN` 后需带 `Authorization: Bearer <token>`。
 
 ### 4.5 新机接入
 
@@ -200,6 +200,7 @@ legacy/   已淘汰组件
 |---|---|
 | `docs/ONBOARD.md` | 新机接入检查清单 |
 | `docs/SKILL-phone-use-wlan.md` | 任务手册全文 |
+| `docs/MCP.md` | MCP 用法：客户端接入、工具清单、示例、排障 |
 | `docs/ARCHITECTURE.md` | 架构、动作后端、占用规则、已知限制 |
 
 ## 7. 常见问题
