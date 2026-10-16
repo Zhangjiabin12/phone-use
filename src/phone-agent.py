@@ -373,7 +373,7 @@ def _pick_free_device():
     return None
 
 
-def delegate_to_phone_use(text, device="auto", timeout=None):
+def delegate_to_phone_use(text, device="auto", timeout=None, max_steps=None):
     ser = device if device and device not in ("auto", "", None) else _pick_free_device()
     owner = "phone-agent:%s" % (ser or "auto")
     leased = False
@@ -388,6 +388,9 @@ def delegate_to_phone_use(text, device="auto", timeout=None):
         cmd = ["phone-use", text]
         if ser:
             cmd += ["--device", ser]
+        ms = max_steps or os.environ.get("PHONE_AGENT_MAX_STEPS") or ""
+        if str(ms).strip():
+            cmd += ["--max-steps", str(ms).strip()]
         pr = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout or DEADLINE)
         out = (pr.stdout or "") + (("\n[stderr]\n" + pr.stderr[-800:]) if pr.returncode else "")
     except subprocess.TimeoutExpired:
@@ -400,20 +403,33 @@ def delegate_to_phone_use(text, device="auto", timeout=None):
         if leased:
             try: http("POST", "/devices/%s/release" % ser, {"owner": owner}, timeout=15)
             except Exception: pass
-    if re.search(r"RESULT:\s*PASS", out):
+    steps = elapsed = trace = None
+    m = re.search(r"PU_RESULT (\{.*\})", out)
+    if m:
+        try:
+            d = json.loads(m.group(1))
+            v = d.get("verdict") or "ANSWER"
+            steps, elapsed, trace = d.get("steps"), d.get("elapsed"), d.get("trace")
+        except Exception:
+            v = "ANSWER"
+    elif re.search(r"RESULT:\s*PASS", out):
         v = "PASS"
     elif re.search(r"RESULT:\s*FAIL", out):
         v = "FAIL"
     else:
         v = "ANSWER"
+    if v not in ("PASS", "FAIL", "ANSWER", "TIMEOUT", "BLOCKED"):
+        v = "ANSWER"
     return {"ok": v in ("PASS", "ANSWER"), "verdict": v, "serial": ser,
-            "answer": out[-6000:], "delegated": "phone-use"}
+            "delegated": "phone-use", "steps": steps, "elapsed": elapsed,
+            "trace": trace, "answer": out[-6000:]}
 
 
 def run_task(text, device="auto", max_steps=MAX_STEPS, owner=None, devices=None,
              cancel=None, job=None):
     if os.environ.get("PHONE_AGENT_DELEGATE", "1") == "1":
-        return delegate_to_phone_use(text, device=device, timeout=None)
+        return delegate_to_phone_use(text, device=device, timeout=None,
+                                     max_steps=locals().get("max_steps"))
     # 多台：直接扇出（总入口只认一句话 + 目标集合，不另设命令）
     if devices and list(devices) not in (["auto"], ["all"]) and len(list(devices)) > 1:
         return fanout(text, list(devices), 4, owner)
@@ -530,7 +546,11 @@ def submit(text, device="auto", devices=None):
         j["status"] = "running"
         j["started"] = time.time()
         try:
-            j["result"] = run_task(text, device, devices=devices, cancel=j["cancel"], job=j)
+            j["result"] = run_task(text, device, devices=devices, cancel=j["cancel"], job=j )
+            CONTRACT_KEYS = ("ok", "verdict", "serial", "delegated", "steps", "elapsed", "trace")
+            for _k in CONTRACT_KEYS:
+                if isinstance(j.get("result"), dict) and j["result"].get(_k) is not None:
+                    j[_k] = j["result"][_k]
         except Exception as e:
             j["result"] = {"ok": False, "verdict": "ERROR", "answer": str(e)}
         j["finished"] = time.time()

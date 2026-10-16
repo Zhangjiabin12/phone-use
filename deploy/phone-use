@@ -4,12 +4,13 @@
 #   logs/run-<ts>.jsonl  ← 全事件轨迹（qwen --output-format json）
 #   logs/run-<ts>.md     ← 自动生成的人读摘要（工具调用序列 + 最终结论）
 PU=/opt/phone-use/pu
-U=phonebot; TO=900; TASK=""; RAW=0; DEV=""
+U=phonebot; TO=900; TASK=""; RAW=0; DEV=""; MAXS=""; T0=$(date +%s)
 while [ $# -gt 0 ]; do
   case "$1" in
     --timeout) TO="$2"; shift 2;;
     --user) U="$2"; shift 2;;
     --device) DEV="$2"; shift 2;;
+    --max-steps) MAXS="$2"; shift 2;;
     --raw) RAW=1; shift;;
     *) TASK="$TASK $1"; shift;;
   esac
@@ -20,9 +21,10 @@ JSONL=$PU/logs/run-$TS.jsonl; MD=$PU/logs/run-$TS.md
 P=$PU/.task-$TS.txt; { [ -n "$DEV" ] && printf '只操作这一台终端：%s。\n' "$DEV"; printf '%s' "$TASK"; } > "$P"; chmod 644 "$P"; ERR=$PU/logs/run-$TS.err
 echo "任务 :$TASK"
 echo "轨迹 :$JSONL"
-sudo -iu "$U" bash -lc "cd $PU && ${DEV:+export ANDROID_SERIAL=$DEV;} timeout $TO qwen --prompt \"\$(cat $P)\" --approval-mode yolo --output-format json" > "$JSONL" 2>"$ERR"
+sudo -iu "$U" bash -lc "cd $PU && ${DEV:+export ANDROID_SERIAL=$DEV;} timeout $TO qwen --prompt \"\$(cat $P)\" --approval-mode yolo ${MAXS:+--max-tool-calls $MAXS} --output-format json" > "$JSONL" 2>"$ERR"
 RC=$?
 rm -f "$P"
+export T0
 python3 - "$JSONL" "$MD" <<'PY'
 import json, sys, collections, re
 src, out = sys.argv[1], sys.argv[2]
@@ -71,6 +73,11 @@ with open(out, 'w', encoding='utf-8') as f:
         for c in cmds: f.write("- `%s`\n" % c[:160])
     f.write("\n## 最终结论\n\n%s\n" % (final or '(未捕获到文本结论)'))
 print("  事件类型:", dict(kinds))
+_el = int(__import__("time").time() - int(__import__("os").environ.get("T0", "0") or 0))
+_v = "PASS" if "RESULT: PASS" in (open(src, encoding="utf-8", errors="ignore").read()) else (
+     "FAIL" if "RESULT: FAIL" in (open(src, encoding="utf-8", errors="ignore").read()) else "ANSWER")
+print("PU_RESULT " + json.dumps({"verdict": _v, "steps": len(tools), "elapsed": _el,
+                                 "trace": src, "summary": out}, ensure_ascii=False))
 print("  轨迹字节:", __import__("os").path.getsize(src))
 print("  工具调用:", len(tools), " 关键命令:", len(cmds))
 print("\n----- 工具调用序列（前 20）-----")

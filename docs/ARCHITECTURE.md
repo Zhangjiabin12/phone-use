@@ -33,7 +33,20 @@
 | 工作目录 | `/opt/phone-use/pu`，项目级配置在该目录的 `.qwen/` 下 |
 | 任务入口 | `/usr/local/bin/phone-use`；每次运行保存轨迹，见 README 4.1 |
 | 接口接入 | 项目级 `settings.json` 的 `env` 配置模型与密钥，`mcpServers` 接入 `phone-hub` |
-| 对外接口 | MCP 为本地 stdio，仅任务主体使用；外部对接统一走 HTTP `POST :8902/task` |
+| 对外接口 | MCP 为本地 stdio，仅任务主体使用；外部对接统一走 HTTP `POST :8902/task`（同步）或 `POST :8902/tasks`（异步作业） |
+
+接口契约（同步 `/task` 与异步 `/tasks` 字段一致）：
+
+| 字段 | 说明 |
+|---|---|
+| `verdict` | `PASS` / `FAIL` / `ANSWER` / `TIMEOUT` / `BLOCKED` |
+| `ok` | `verdict` 为 `PASS` 或 `ANSWER` 时为 `true` |
+| `serial` / `delegated` | 实际终端 / 受理执行体 |
+| `steps` / `elapsed` / `trace` | 工具调用步数 / 耗时秒 / 轨迹文件 |
+| `status` | 仅异步：`running` / `done` / `failed` / `cancelled` |
+
+异步作业：`POST /tasks` 取 `id` → `GET /tasks/<id>` 轮询 → `POST /tasks/<id>/cancel` 取消并释放终端。
+`max_steps` 透传为任务主体的工具调用上限。本地 MCP 的 `phone_task` 走同一异步接口，字段一致。
 | 视觉 | 主模型直接读图；模型能力表缺失时用 `ops/fix-vision-registry.sh` 补齐 |
 
 ## 3. 动作后端与回退

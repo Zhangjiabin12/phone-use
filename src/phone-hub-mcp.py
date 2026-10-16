@@ -42,6 +42,14 @@ TOOLS = [
                                              "description": "原语参数，如 [\"wifi-connect\",\"928wpa2-psk\",\"wpa2\",\"12345678\",\"--mac\",\"none\"]"},
                                     "timeout_s": {"type": "integer", "default": 600}},
                      "required": ["argv"], "additionalProperties": False}},
+    {"name": "phone_task",
+     "description": "给一句话任务（连网/认证/取证等）。提交异步作业并等待结束；返回 verdict(PASS/FAIL/ANSWER/TIMEOUT/BLOCKED)、serial、steps、elapsed、trace 与答复原文。",
+     "inputSchema": {"type": "object", "properties": {
+        "text": {"type": "string", "description": "任务语句"},
+        "device": {"type": "string", "description": "终端 serial，默认 auto"},
+        "max_steps": {"type": "integer", "description": "最多工具调用步数"},
+        "timeout_s": {"type": "integer", "description": "等待上限（秒），默认 600"}},
+        "required": ["text"]}},
     {"name": "phone_skill",
      "description": "返回手机 WLAN 认证 runbook（开放/PSK/1X/门户四条路线的做法、成功判据、MIUI 已知坑、"
                     "机型差异）。先读它再动手。",
@@ -59,9 +67,12 @@ TOOLS = [
 ]
 
 
-def http(method, path, body=None, timeout=600):
+AGENT_BASE = os.environ.get("PHONE_AGENT_BASE", "http://127.0.0.1:8902")
+
+
+def http(method, path, body=None, timeout=600, base=None):
     data = json.dumps(body).encode() if body is not None else None
-    req = urllib.request.Request(HUB + path, data=data, method=method,
+    req = urllib.request.Request((base or HUB) + path, data=data, method=method,
                                  headers={"Content-Type": "application/json"})
     with urllib.request.urlopen(req, timeout=timeout) as r:
         return json.loads(r.read().decode())
@@ -77,6 +88,8 @@ def pick_serial():
 
 
 def call_tool(name, args):
+    if name == "phone_task":
+        return phone_task(args)
     if name == "devices_list":
         d = http("GET", "/devices", timeout=30)
         return json.dumps(d, ensure_ascii=False, indent=2)
@@ -107,6 +120,34 @@ def reply(msg_id, result=None, error=None):
         m["result"] = result
     sys.stdout.write(json.dumps(m, ensure_ascii=False) + "\n")
     sys.stdout.flush()
+
+
+def phone_task(args):
+    """给一句话任务：提交到 8902 的异步作业接口，轮询到结束或超时；返回契约与 HTTP 接口一致"""
+    text = args.get("text") or ""
+    dev = args.get("device") or "auto"
+    timeout_s = int(args.get("timeout_s") or 600)
+    body = {"text": text, "device": dev}
+    if args.get("max_steps"):
+        body["max_steps"] = args["max_steps"]
+    r = http("POST", "/tasks", body, base=AGENT_BASE, timeout=60)
+    jid = r.get("id") or r.get("job_id")
+    if not jid:
+        return {"ok": False, "verdict": "ERROR", "answer": "提交失败：%s" % str(r)[:200]}
+    import time as _t
+    t0 = _t.time()
+    while _t.time() - t0 < timeout_s:
+        _t.sleep(5)
+        st = http("GET", "/tasks/%s" % jid, base=AGENT_BASE, timeout=30)
+        if st.get("status") in ("done", "failed", "cancelled"):
+            res = st.get("result") or {}
+            return {"ok": bool(res.get("ok")), "job": jid, "status": st.get("status"),
+                    "verdict": res.get("verdict"), "serial": res.get("serial"),
+                    "delegated": res.get("delegated"), "steps": res.get("steps"),
+                    "elapsed": res.get("elapsed"), "trace": res.get("trace"),
+                    "answer": str(res.get("answer"))[-4000:]}
+    return {"ok": True, "job": jid, "status": "running",
+            "answer": "等待 %ss 仍未结束；查进度 GET /tasks/%s，放弃 POST /tasks/%s/cancel" % (timeout_s, jid, jid)}
 
 
 def main():

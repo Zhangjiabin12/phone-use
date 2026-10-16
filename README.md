@@ -118,12 +118,42 @@ phone-look <serial> --coord "WLAN 列表中的 test-portal2"
 
 ### 4.4 HTTP 接口
 
+同步调用，短任务使用：
+
 ```bash
 curl -X POST http://<host>:8902/task -H 'Content-Type: application/json' \
-     -d '{"text":"连 928wpa2-psk 密码 12345678","device":"auto"}'
+     -d '{"text":"连 928wpa2-psk 密码 12345678","device":"auto","max_steps":40}'
 ```
 
-返回 `verdict`、`answer`、`serial`。`verdict` 取值：`PASS`、`FAIL`、`ANSWER`、`TIMEOUT`、`BLOCKED`。
+异步调用，长任务使用：先取作业号，再轮询，可随时取消。
+
+```bash
+curl -X POST http://<host>:8902/tasks -H 'Content-Type: application/json' \
+     -d '{"text":"连 test-portal2 做 portal 认证，账号 zjb 密码 123456","device":"auto"}'
+# → {"id":"job003","status":"running", ...}
+
+curl http://<host>:8902/tasks/job003                      # 查进度与结果
+curl -X POST http://<host>:8902/tasks/job003/cancel       # 取消并释放终端
+```
+
+请求字段：`text`（必填）、`device`（默认 `auto`）、`max_steps`（步数上限，可选）。
+
+返回字段，同步与异步一致：
+
+| 字段 | 说明 |
+|---|---|
+| `verdict` | `PASS` / `FAIL` / `ANSWER` / `TIMEOUT` / `BLOCKED` |
+| `ok` | `verdict` 为 `PASS` 或 `ANSWER` 时为 `true` |
+| `serial` | 实际使用的终端 |
+| `delegated` | 受理任务的执行体，固定为 `phone-use` |
+| `steps` | 实际工具调用步数 |
+| `elapsed` | 耗时（秒） |
+| `trace` | 轨迹文件路径 |
+| `answer` | 结论与证据全文 |
+
+异步作业的 `status` 取值：`running` / `done` / `failed` / `cancelled`。
+
+本机 MCP 工具面另提供 `phone_task(text, device, max_steps, timeout_s)`，走同一异步接口，字段与上表一致。
 
 ### 4.5 新机接入
 
