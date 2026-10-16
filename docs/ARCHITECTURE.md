@@ -33,6 +33,7 @@
 | 工作目录 | `/opt/phone-use/pu`，项目级配置在该目录的 `.qwen/` 下 |
 | 任务入口 | `/usr/local/bin/phone-use`；每次运行保存轨迹，见 README 4.1 |
 | 接口接入 | 项目级 `settings.json` 的 `env` 配置模型与密钥，`mcpServers` 接入 `phone-hub` |
+| 对外接口 | MCP 为本地 stdio，仅任务主体使用；外部对接统一走 HTTP `POST :8902/task` |
 | 视觉 | 主模型直接读图；模型能力表缺失时用 `ops/fix-vision-registry.sh` 补齐 |
 
 ## 3. 动作后端与回退
