@@ -27,15 +27,29 @@ import threading
 import time
 import urllib.request
 
-HUB = os.environ.get("PHONE_HUB_BASE", "http://127.0.0.1:8901")
-PORT = int(os.environ.get("PHONE_AGENT_PORT", "8902"))
-BU_ENV = os.environ.get("PHONE_AGENT_ENV", "/opt/webui-mcp/bu/bu.env")
-MAX_STEPS = int(os.environ.get("PHONE_AGENT_MAX_STEPS", "24"))
-LOG = os.environ.get("PHONE_AGENT_LOG", "/var/log/phone-agent.log")
-LLM_TIMEOUT = int(os.environ.get("PHONE_AGENT_LLM_TIMEOUT", "120"))      # 单次 LLM 调用超时（LLM 挂住不会拖死）
-LLM_RETRY = int(os.environ.get("PHONE_AGENT_LLM_RETRY", "2"))
-DEADLINE = int(os.environ.get("PHONE_AGENT_DEADLINE", "1200"))           # 单任务总时限（秒），到点收口释放
-QUEUE_WAIT = int(os.environ.get("PHONE_AGENT_QUEUE_WAIT", "600"))        # 同一台被占时，排队等多久（0=不排队）
+
+def _clean_env(v, default=None):
+    """取值时去掉行内注释与空白（systemd EnvironmentFile 不会去掉 # 后的内容）"""
+    if v is None:
+        return default
+    v = str(v).split("#", 1)[0].strip()
+    return v if v != "" else default
+
+
+def _envint(name, default):
+    """读整数环境变量；容忍 '1200 # 注释' 这种写法"""
+    return int(_clean_env(os.environ.get(name), default))
+
+
+HUB = _clean_env(os.environ.get("PHONE_HUB_BASE", "http://127.0.0.1:8901"))
+PORT = _envint("PHONE_AGENT_PORT", "8902")
+BU_ENV = _clean_env(os.environ.get("PHONE_AGENT_ENV", "/opt/webui-mcp/bu/bu.env"))
+MAX_STEPS = _envint("PHONE_AGENT_MAX_STEPS", "24")
+LOG = _clean_env(os.environ.get("PHONE_AGENT_LOG", "/var/log/phone-agent.log"))
+LLM_TIMEOUT = _envint("PHONE_AGENT_LLM_TIMEOUT", "120")      # 单次 LLM 调用超时（LLM 挂住不会拖死）
+LLM_RETRY = _envint("PHONE_AGENT_LLM_RETRY", "2")
+DEADLINE = _envint("PHONE_AGENT_DEADLINE", "1200")           # 单任务总时限（秒），到点收口释放
+QUEUE_WAIT = _envint("PHONE_AGENT_QUEUE_WAIT", "600")        # 同一台被占时，排队等多久（0=不排队）
 
 
 def log(msg):
@@ -50,9 +64,9 @@ def log(msg):
 
 
 def load_llm_conf():
-    cfg = {"model": os.environ.get("PHONE_AGENT_MODEL", "deepseek-flash"),
-           "base": os.environ.get("PHONE_AGENT_BASE_URL", ""),
-           "key": os.environ.get("PHONE_AGENT_API_KEY", "")}
+    cfg = {"model": _clean_env(os.environ.get("PHONE_AGENT_MODEL", "deepseek-flash")),
+           "base": _clean_env(os.environ.get("PHONE_AGENT_BASE_URL", "")),
+           "key": _clean_env(os.environ.get("PHONE_AGENT_API_KEY", ""))}
     if (not cfg["base"] or not cfg["key"]) and os.path.exists(BU_ENV):
         for line in open(BU_ENV, encoding="utf-8", errors="ignore"):
             line = line.strip()

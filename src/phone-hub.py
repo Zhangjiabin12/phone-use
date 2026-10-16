@@ -27,18 +27,32 @@ import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-PORT = int(os.environ.get("PHONE_HUB_PORT", "8901"))
-SCAN_INTERVAL = int(os.environ.get("PHONE_HUB_SCAN", "15"))
-PROBE_TTL = int(os.environ.get("PHONE_HUB_PROBE_TTL", "600"))
-TTL_DEFAULT = int(os.environ.get("PHONE_HUB_TTL", "900"))          # 租约默认有效期
-IDLE_RECLAIM = int(os.environ.get("PHONE_HUB_IDLE_RECLAIM", "600"))  # 无心跳且无动作 → 收回
-STILL_RECLAIM = int(os.environ.get("PHONE_HUB_STILL_RECLAIM", "900"))  # 屏幕长时间无变化 → 收回
-HEARTBEAT_GRACE = int(os.environ.get("PHONE_HUB_HB_GRACE", "90"))   # 心跳新鲜度阈值（判定"人在/agent 在"）
+
+def _clean_env(v, default=None):
+    """取值时去掉行内注释与空白（systemd EnvironmentFile 不会去掉 # 后的内容）"""
+    if v is None:
+        return default
+    v = str(v).split("#", 1)[0].strip()
+    return v if v != "" else default
+
+
+def _envint(name, default):
+    """读整数环境变量；容忍 '1200 # 注释' 这种写法"""
+    return int(_clean_env(os.environ.get(name), default))
+
+
+PORT = _envint("PHONE_HUB_PORT", "8901")
+SCAN_INTERVAL = _envint("PHONE_HUB_SCAN", "15")
+PROBE_TTL = _envint("PHONE_HUB_PROBE_TTL", "600")
+TTL_DEFAULT = _envint("PHONE_HUB_TTL", "900")          # 租约默认有效期
+IDLE_RECLAIM = _envint("PHONE_HUB_IDLE_RECLAIM", "600")  # 无心跳且无动作 → 收回
+STILL_RECLAIM = _envint("PHONE_HUB_STILL_RECLAIM", "900")  # 屏幕长时间无变化 → 收回
+HEARTBEAT_GRACE = _envint("PHONE_HUB_HB_GRACE", "90")   # 心跳新鲜度阈值（判定"人在/agent 在"）
 # 心跳还在、但设备长时间没有任何动作 → 判定任务挂死（典型：LLM 服务器挂了/网络卡住，进程没死心跳照跳）
-STALL_AFTER = int(os.environ.get("PHONE_HUB_STALL_AFTER", "120"))       # 多久无动作算"疑似卡死"（展示用）
-STALL_RECLAIM = int(os.environ.get("PHONE_HUB_STALL_RECLAIM", "300"))   # 多久无动作就强制收回
-OFFLINE_PRUNE = int(os.environ.get("PHONE_HUB_OFFLINE_PRUNE", "86400"))  # 离线多久后从列表删除（老化清理）
-PHONE_USE = os.environ.get("PHONE_USE_BIN", "/usr/local/share/phone-use/phone-use.py")
+STALL_AFTER = _envint("PHONE_HUB_STALL_AFTER", "120")       # 多久无动作算"疑似卡死"（展示用）
+STALL_RECLAIM = _envint("PHONE_HUB_STALL_RECLAIM", "300")   # 多久无动作就强制收回
+OFFLINE_PRUNE = _envint("PHONE_HUB_OFFLINE_PRUNE", "86400")  # 离线多久后从列表删除（老化清理）
+PHONE_USE = _clean_env(os.environ.get("PHONE_USE_BIN", "/usr/local/share/phone-use/phone-use.py"))
 SKILL_PATH = "/usr/local/share/phone-use/SKILL.md"
 JAR_PATH = "/opt/phone-use-jar/pu.jar"
 VERSION = "1.0"
