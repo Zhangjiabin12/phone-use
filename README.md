@@ -164,3 +164,45 @@ phone-agent "连 928wpa2-psk 密码 12345678"
 - Huawei/HyperOS 的门户认证入口与 AOSP 不同（见 §5），**别指望界面**
 - `ws-scrcpy` 端口写死在 bundle 里（`--port`/环境变量都无效），固定 8000；手机墙会自动对准
 - 画面帧率取决于通道：内嵌 scrcpy H.264 = 视频级；截图流（`screencap`）只有 1~3fps
+---
+
+## 10. Agent 主体：Qwen Code（2026-10-16 起）
+
+原来那个手搓的 6 工具循环已退役；**脑子换成通用 coding agent**，`phone-use`/`phone-hub` 作为它的「手」和「闸」保留不变。
+
+### 为什么换
+"自己连、出问题自己排查、自己适配"需要的正是 **跑 shell + 读写文件 + 多步自修复** —— 这是 coding agent 的本职；
+手机 GUI agent（AutoGLM / mobile-use）的强项只是"用眼睛点屏幕"，且 AutoGLM 的动作集**没有 shell/文件能力**。
+
+### 分层
+```
+【脑子】Qwen Code（phonebot，非 root、无 sudo；项目级 .qwen 配置）
+【眼睛】原生读图（补 models.dev 注册表的 modalities.image）+ phone-look 兜底
+【手】  phone-use 原语（P1 root / P2 input / P3 jar 自动回退）· phone-look
+【闸】  phone-hub（租约硬闸 / 排队 / usable / 体检 / 留痕）
+【底层】/opt/phone-use/base 只读 + sha256 守卫；改动只能 cp 到 work/copies/
+```
+
+### 入口
+```bash
+pu-run "连 test-portal2 做 portal 认证，账号 zjb 密码 123456" [--timeout 900]
+# 一次运行留三份档：logs/run-<ts>.jsonl（全事件轨迹）/ .md（人读摘要）/ .err（stderr）
+```
+
+### 关键工程细节（都踩过坑）
+| 项 | 结论 |
+|---|---|
+| 系统提示词 | 项目级 `.qwen/system.md`（= docs/AGENT-PROMPT.md），含"看只能 phone-look、点只能 phone-use、底层只读、先复制再改、输出 PASS/FAIL+证据" |
+| MCP | 项目级 `settings.json` 的 `mcpServers.phone-hub` → `phone-hub-mcp.py`（轨迹里可见 `phone-hub {}` 被调用） |
+| 视觉 | qwen 按 `~/.qwen/model-registry.json`（models.dev）的 `modalities.image` 决定要不要把图给模型；该表**缺 deepseek-flash** → 用 `ops/fix-vision-registry.sh` 幂等补上（实测补完能原生读真机截图） |
+| 轨迹 | `--output-format json` 有效（输出是**一个 JSON 数组**）；`--json-file` 无效 |
+| 只读保证 | 以 root 跑靠 sha256 守卫（篡改 → exit 90）；以非 root 跑是物理只读 |
+| 临时文件 | 给 agent 的 prompt 文件必须放它能读的地方（`mktemp` 建的 root 600 会让它收到空 prompt） |
+
+### 复现
+```bash
+# 1) 冻结底层（只读 + 指纹清单 + 守卫启动器）
+bash ops/install-frozen-base.sh        # 生成 /opt/phone-use/base 与 sha256
+# 2) 装 agent 主体
+bash deploy/install-qwen-agent.sh      # 建 phonebot、装 qwen、项目级 .qwen、pu-run、视觉补丁
+```

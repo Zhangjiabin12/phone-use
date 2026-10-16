@@ -39,14 +39,44 @@ def sh(args, timeout=120, serial=None):
     return p.returncode, p.stdout, p.stderr
 
 
+def _proj_base():
+    """端点也回退读项目级配置"""
+    try:
+        import json as _json
+        for cand in ("/opt/phone-use/pu/.qwen/settings.json",
+                     os.path.expanduser("~/.qwen/settings.json")):
+            if os.path.exists(cand):
+                b = ((_json.load(open(cand, encoding="utf-8")).get("env") or {})
+                     .get("OPENAI_BASE_URL"))
+                if b:
+                    return str(b).strip()
+    except Exception:
+        pass
+    return None
+
+
 def bu_key():
-    k = os.environ.get("PHONE_LOOK_KEY") or os.environ.get("PHONE_AGENT_API_KEY")
+    # 取值顺序：显式指定 > agent 传下来的 OPENAI_API_KEY > BU 网关 key 文件
+    k = (os.environ.get("PHONE_LOOK_KEY") or os.environ.get("PHONE_AGENT_API_KEY")
+         or os.environ.get("OPENAI_API_KEY"))
     if k:
         return k.strip()
     try:
         for line in open(BU_ENV, encoding="utf-8", errors="ignore"):
             if line.startswith("BU_LLM_API_KEY="):
                 return line.split("=", 1)[1].strip().strip('"').strip("'")
+    except Exception:
+        pass
+    # 回退：读项目级 .qwen/settings.json 的 env（phonebot 可读，600）
+    try:
+        import json as _json
+        for cand in ("/opt/phone-use/pu/.qwen/settings.json",
+                     os.path.expanduser("~/.qwen/settings.json")):
+            if os.path.exists(cand):
+                k = ((_json.load(open(cand, encoding="utf-8")).get("env") or {})
+                     .get("OPENAI_API_KEY"))
+                if k:
+                    return str(k).strip()
     except Exception:
         pass
     return ""
@@ -91,8 +121,10 @@ def look(serial, question, want_coord=False, keep=False, timeout=300):
             "messages": [{"role": "user", "content": [
                 {"type": "text", "text": ask},
                 {"type": "image_url", "image_url": {"url": "data:image/png;base64," + b64}}]}]}
+    _base = (os.environ.get("PHONE_LOOK_BASE") or os.environ.get("OPENAI_BASE_URL")
+             or _proj_base() or DEFAULT_BASE).rstrip("/")
     req = urllib.request.Request(
-        os.environ.get("PHONE_LOOK_BASE", DEFAULT_BASE).rstrip("/") + "/chat/completions",
+        _base + "/chat/completions",
         data=json.dumps(body).encode(),
         headers={"Authorization": "Bearer " + bu_key(), "Content-Type": "application/json"})
     t0 = time.time()

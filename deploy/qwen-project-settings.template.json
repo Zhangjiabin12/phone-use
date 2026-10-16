@@ -1,0 +1,29 @@
+{
+  "env": {
+    "OPENAI_API_KEY": "<在 settings.json 里填你的网关 key>",
+    "OPENAI_BASE_URL": "http://131.255.36.100:30001/v1",
+    "OPENAI_MODEL": "deepseek-flash"
+  },
+  "$version": 4,
+  "mcpServers": {
+    "phone-hub": {
+      "command": "/usr/bin/python3",
+      "args": [
+        "/usr/local/share/phone-hub/phone-hub-mcp.py"
+      ],
+      "env": {
+        "PHONE_HUB_BASE": "http://127.0.0.1:8901"
+      },
+      "trust": true
+    }
+  },
+  "model": {
+    "visionModel": "deepseek-flash",
+    "visionModelFallback": "glm-5.3-flash"
+  },
+  "memory": {
+    "enableAutoSkill": true,
+    "enableManagedAutoMemory": true,
+    "enableManagedAutoDream": true
+  }
+}
