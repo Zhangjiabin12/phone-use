@@ -22,6 +22,7 @@
 import json
 import os
 import re
+import subprocess
 import sys
 import threading
 import time
@@ -360,8 +361,59 @@ def wait_device_free(serial, cancel=None, timeout=None):
     return False, "排队等了 %ds，%s 仍被占用" % (timeout, serial)
 
 
+
+# ===== DELEGATE_TO_PHONE_USE：本服务退化为新脑子（phone-use 入口 = Qwen Code）的 HTTP 门面 =====
+def _pick_free_device():
+    try:
+        for d in http("GET", "/devices", timeout=30).get("devices", []):
+            if d.get("usable") and d.get("state") == "idle":
+                return d["serial"]
+    except Exception:
+        pass
+    return None
+
+
+def delegate_to_phone_use(text, device="auto", timeout=None):
+    ser = device if device and device not in ("auto", "", None) else _pick_free_device()
+    owner = "phone-agent:%s" % (ser or "auto")
+    leased = False
+    if ser:
+        try:
+            http("POST", "/devices/%s/lease" % ser, {"owner": owner, "ttl": 1800}, timeout=30)
+            leased = True
+        except Exception as e:
+            return {"ok": False, "verdict": "BLOCKED", "serial": ser,
+                    "answer": "终端不可用或被占用：%s" % str(e)[:200]}
+    try:
+        cmd = ["phone-use", text]
+        if ser:
+            cmd += ["--device", ser]
+        pr = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout or DEADLINE)
+        out = (pr.stdout or "") + (("\n[stderr]\n" + pr.stderr[-800:]) if pr.returncode else "")
+    except subprocess.TimeoutExpired:
+        out = "任务超时（%ss）" % (timeout or DEADLINE)
+        if leased:
+            try: http("POST", "/devices/%s/release" % ser, {"owner": owner}, timeout=15)
+            except Exception: pass
+        return {"ok": False, "verdict": "TIMEOUT", "answer": out, "serial": ser}
+    finally:
+        if leased:
+            try: http("POST", "/devices/%s/release" % ser, {"owner": owner}, timeout=15)
+            except Exception: pass
+    if re.search(r"RESULT:\s*PASS", out):
+        v = "PASS"
+    elif re.search(r"RESULT:\s*FAIL", out):
+        v = "FAIL"
+    else:
+        v = "ANSWER"
+    return {"ok": v in ("PASS", "ANSWER"), "verdict": v, "serial": ser,
+            "answer": out[-6000:], "delegated": "phone-use"}
+
+
 def run_task(text, device="auto", max_steps=MAX_STEPS, owner=None, devices=None,
              cancel=None, job=None):
+    if os.environ.get("PHONE_AGENT_DELEGATE", "1") == "1":
+        return delegate_to_phone_use(text, device=device, timeout=None)
     # 多台：直接扇出（总入口只认一句话 + 目标集合，不另设命令）
     if devices and list(devices) not in (["auto"], ["all"]) and len(list(devices)) > 1:
         return fanout(text, list(devices), 4, owner)

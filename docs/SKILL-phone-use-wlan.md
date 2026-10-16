@@ -39,10 +39,10 @@
 ```
 cmd wifi connect-network 永远回 "Connection initiated" —— 不能当成功
 ```
-- **上线成功**：`phone-use wifi` → `ssid` 等于目标 且 `supplicant=COMPLETED` 且 `ip` 非空
-- **1X 成功**：同上 + `phone-use failure <ssid>` → `level2FailureCode=NONE`
+- **上线成功**：`phone-hand wifi` → `ssid` 等于目标 且 `supplicant=COMPLETED` 且 `ip` 非空
+- **1X 成功**：同上 + `phone-hand failure <ssid>` → `level2FailureCode=NONE`
   失败：`AUTHENTICATION_FAILURE` / `level2FailureReason=AUTH_FAILURE_EAP_FAILURE`
-- **门户认证成功**：`phone-use probe` → `portal_intercepted=false`
+- **门户认证成功**：`phone-hand probe` → `portal_intercepted=false`
 - **门户认证失败**：`probe` 仍被拦（location 含 `/portal/`），或门户返回 `{"code":…,"message":…}`
 
 ## 3. 四条路线（AI 自行组合，遇阻就换招）
@@ -69,13 +69,13 @@ cmd wifi connect-network 永远回 "Connection initiated" —— 不能当成功
 
 
 **A. 开放 / 不认证**
-1. `phone-use wifi-connect <ssid> open --mac none`
-2. `phone-use wifi` 轮询到连上 → 3. `phone-use probe`
+1. `phone-hand wifi-connect <ssid> open --mac none`
+2. `phone-hand wifi` 轮询到连上 → 3. `phone-hand probe`
    - 未被拦 → PASS
    - 被拦且用户要求认证 → 转 C
 
 **B. PSK**
-1. `phone-use wifi-connect <ssid> wpa2 <密码> --mac none`（要固定设备 MAC 就 `--mac none`，随机就 `auto`）
+1. `phone-hand wifi-connect <ssid> wpa2 <密码> --mac none`（要固定设备 MAC 就 `--mac none`，随机就 `auto`）
 2. 轮询 `wifi`；失败看 `failure <ssid>`
 > 密码错的表现：目标 SSID 一直不上线，且回落旧网络（`dumpsys wifi` 里 `HandshakeState→DisconnectedState` 循环）
 
@@ -83,7 +83,7 @@ cmd wifi connect-network 永远回 "Connection initiated" —— 不能当成功
 
 > **C0（优先）：协议式**
 > ```
-> phone-use jar portal-login <账号> <密码>     # 迈普门户；也支持 portal-free / portal-noper
+> phone-hand jar portal-login <账号> <密码>     # 迈普门户；也支持 portal-free / portal-noper
 > ```
 > 成功判据：返回 `{"code":"0","message":"NO_ERROR"}`，且随后 `probe` 不再被拦（302→301 之类）。
 > **为什么优先**：界面式依赖"厂商把门户入口放哪、用什么浏览器打开、表单暴不暴露给无障碍"，
@@ -102,25 +102,25 @@ cmd wifi connect-network 永远回 "Connection initiated" —— 不能当成功
 > 进到门户页后 `ui` 找表单（有 HTML id 的 WebView 能被无障碍读到，如 `account`/`acc_pass`/`widget-login-btn`），
 > 用 `click-id !<id>` + `settext --id <id> <值>` 填；**读不到表单元素就立刻回退到 C0/报告 FAIL**，别硬耗步数。
 
-1. 先按 A 连上开放网络，`phone-use probe` 确认被拦（响应里能看到 `wlanusermac` 等网关参数）
-2. `phone-use shell am start -a android.settings.WIFI_SETTINGS`
-3. `phone-use click-desc 登录到网络`（找不到就 `scroll 3` 再试）→ 进 **系统门户登录页**
+1. 先按 A 连上开放网络，`phone-hand probe` 确认被拦（响应里能看到 `wlanusermac` 等网关参数）
+2. `phone-hand shell am start -a android.settings.WIFI_SETTINGS`
+3. `phone-hand click-desc 登录到网络`（找不到就 `scroll 3` 再试）→ 进 **系统门户登录页**
    （`com.android.captiveportallogin` 的 WebView **会把网页元素暴露给无障碍**，带 HTML 原 id）
-4. `phone-use ui` 找入口：
+4. `phone-hand ui` 找入口：
    - 「我要上网」→ `click-id !widget-login-btn`
    - 表单 → `click-id account` → `settext --id account <账号>`
      → `click-id acc_pass` → `settext --id acc_pass <密码>` → `click-id account-login-btn`
    - 免费/一键上网类按钮：`ui` 里找文本（如 一键上网/免费上网）再点
-5. `phone-use probe` 复核；仍被拦就 `ui` 看错误提示并重试/截图
-6. 兜底（迈普门户，快且带服务端错误码）：`phone-use jar portal-login <账号> <密码>`
+5. `phone-hand probe` 复核；仍被拦就 `ui` 看错误提示并重试/截图
+6. 兜底（迈普门户，快且带服务端错误码）：`phone-hand jar portal-login <账号> <密码>`
    （也支持 `portal-free` / `portal-noper`；成功回 `{"code":"0","message":"NO_ERROR"}`）
 
 **D. 1X（802.1X / PEAP+MSCHAPv2）**
 > `cmd wifi` 不支持 EAP，**只能走 UI**；好在从扫描列表点企业级 SSID 时不需要改下拉框
-1. `phone-use scan EAP` 看空口有哪些企业级 SSID、选最强的
-2. `phone-use shell am start -a android.settings.WIFI_SETTINGS`
-3. `phone-use click-desc <ssid>`；没命中就 `scroll 3` 重试（列表按信号动态排序且只显示一部分）
-4. `phone-use ui` 确认出现 `com.android.settings:id/identity`（凭据弹窗）
+1. `phone-hand scan EAP` 看空口有哪些企业级 SSID、选最强的
+2. `phone-hand shell am start -a android.settings.WIFI_SETTINGS`
+3. `phone-hand click-desc <ssid>`；没命中就 `scroll 3` 重试（列表按信号动态排序且只显示一部分）
+4. `phone-hand ui` 确认出现 `com.android.settings:id/identity`（凭据弹窗）
 5. `settext --id com.android.settings:id/identity <账号>`
    `settext --id com.android.settings:id/password <密码>`
    `click-id android:id/button1`（连接）→ **系统会自动开始连它**
@@ -165,17 +165,17 @@ phone-look <serial> --coord "WLAN 列表里 'test-portal2' 这一项"   # 额外
 ```
 - 它内部做：`screencap → 取回本地 → 交给视觉模型（deepseek-flash，已实测能准确读真机截图）→ 回文本`
 - 结论里若带 `TAP=x,y`，就是可直接点的**设备绝对坐标**
-- 想要原始截图存档（备查/给人看）：`phone-use shot /sdcard/s.png` + `phone-use pull /sdcard/s.png /tmp/s.png`
-- **坐标永远是设备真实分辨率**（先 `phone-use state` 读 `screen`）：华为 1236×2676、小米 1080×2340 —— **别猜**
+- 想要原始截图存档（备查/给人看）：`phone-hand shot /sdcard/s.png` + `phone-hand pull /sdcard/s.png /tmp/s.png`
+- **坐标永远是设备真实分辨率**（先 `phone-hand state` 读 `screen`）：华为 1236×2676、小米 1080×2340 —— **别猜**
 
 ### 二、点屏幕：三级精度，从上到下选（能用上面的就别用下面的）
 | 级别 | 命令 | 什么时候用 |
 |---|---|---|
-| ① 语义点击（最稳） | `phone-use click-text "登录"` / `click-desc "下一步"` / `click-id !account` | 控件有文字/描述/id（设置项、按钮、WebView 表单） |
-| ② 元素定位（推荐默认） | `phone-use find "WLAN"` / `ui WLAN` → 拿到 `bounds` → 算中心 → `phone-use click-xy X Y` | 有控件但文字不唯一；**P3 机型（只能节点动作）也只有这条路** |
-| ③ 视觉估坐标 | `phone-look --coord "…"` → `phone-use tap X Y` | 自绘界面 / WebView 不暴露元素 / 上面两条都失败时 |
-- 输入文字：`phone-use settext --id !account "zjb"`（优先）或 `phone-use input "文本"`；有 root 也可 `key`
-- 按键：`phone-use key back|home|app_switch|enter…`；**不要用 `adb shell input`**（MIUI/HyperOS 会被 `INJECT_EVENTS` 拦；`phone-use` 会自动按 P1 root / P2 input / P3 jar 回退）
+| ① 语义点击（最稳） | `phone-hand click-text "登录"` / `click-desc "下一步"` / `click-id !account` | 控件有文字/描述/id（设置项、按钮、WebView 表单） |
+| ② 元素定位（推荐默认） | `phone-hand find "WLAN"` / `ui WLAN` → 拿到 `bounds` → 算中心 → `phone-hand click-xy X Y` | 有控件但文字不唯一；**P3 机型（只能节点动作）也只有这条路** |
+| ③ 视觉估坐标 | `phone-look --coord "…"` → `phone-hand tap X Y` | 自绘界面 / WebView 不暴露元素 / 上面两条都失败时 |
+- 输入文字：`phone-hand settext --id !account "zjb"`（优先）或 `phone-hand input "文本"`；有 root 也可 `key`
+- 按键：`phone-hand key back|home|app_switch|enter…`；**不要用 `adb shell input`**（MIUI/HyperOS 会被 `INJECT_EVENTS` 拦；`phone-use` 会自动按 P1 root / P2 input / P3 jar 回退）
 
 ### 三、判定纪律（不许拿返回码当成功）
 - 上线成功 = `wifi` 里 **ssid 匹配 + supplicant=COMPLETED + ip 非空**

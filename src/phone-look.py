@@ -102,10 +102,10 @@ def look(serial, question, want_coord=False, keep=False, timeout=300):
     w, h = device_size(serial)
     dev_png = "/sdcard/phone-look.png"
     local = "/tmp/phone-look-%s.png" % serial
-    rc, out, err = sh(["phone-use", "shot", dev_png], timeout=120, serial=serial)
+    rc, out, err = sh(["phone-hand", "shot", dev_png], timeout=120, serial=serial)
     if rc != 0:
         return {"ok": False, "error": "截图失败: %s" % (err or out)[:200]}
-    rc, out, err = sh(["phone-use", "pull", dev_png, local], timeout=120, serial=serial)
+    rc, out, err = sh(["phone-hand", "pull", dev_png, local], timeout=120, serial=serial)
     if rc != 0 or not os.path.exists(local):
         return {"ok": False, "error": "取回截图失败: %s" % (err or out)[:200]}
 
@@ -170,7 +170,7 @@ def main():
         print("【看】%s  (%dx%d, %.1fs)" % (serial, r["screen"][0], r["screen"][1], r["seconds"]))
         print(r["answer"])
         if r.get("tap"):
-            print("建议点击: phone-use tap %d %d" % (r["tap"][0], r["tap"][1]))
+            print("建议点击: phone-hand tap %d %d" % (r["tap"][0], r["tap"][1]))
     else:
         print("【看】失败: %s" % r.get("error"))
         return 1

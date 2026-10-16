@@ -52,7 +52,7 @@ HEARTBEAT_GRACE = _envint("PHONE_HUB_HB_GRACE", "90")   # 心跳新鲜度阈值�
 STALL_AFTER = _envint("PHONE_HUB_STALL_AFTER", "120")       # 多久无动作算"疑似卡死"（展示用）
 STALL_RECLAIM = _envint("PHONE_HUB_STALL_RECLAIM", "300")   # 多久无动作就强制收回
 OFFLINE_PRUNE = _envint("PHONE_HUB_OFFLINE_PRUNE", "86400")  # 离线多久后从列表删除（老化清理）
-PHONE_USE = _clean_env(os.environ.get("PHONE_USE_BIN", "/usr/local/share/phone-use/phone-use.py"))
+PHONE_USE = _clean_env(os.environ.get("PHONE_USE_BIN", "/opt/phone-use/base/phone-hand.py"))
 SKILL_PATH = "/usr/local/share/phone-use/SKILL.md"
 JAR_PATH = "/opt/phone-use-jar/pu.jar"
 VERSION = "1.0"
@@ -84,7 +84,7 @@ def jar_sha1():
 def phone_use_version():
     try:
         txt = open(PHONE_USE, encoding="utf-8").read()
-        m = re.search(r'"""phone-use[^\n]*', txt)
+        m = re.search(r'"""phone-hand[^\n]*', txt)
         return "4" if "原语工具集" in txt else "3"
     except Exception:
         return None

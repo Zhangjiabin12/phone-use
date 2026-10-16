@@ -24,19 +24,19 @@ phone-doctor <serial>     # 新机/可疑时先体检，按它给的"怎么修"�
 phone-look <serial> "现在是什么页面？有没有要处理的弹窗？"
 phone-look <serial> --coord "WLAN 列表里 test-portal2 这一项"     # 会回 TAP=x,y
 ```
-你的工具输出是文本，**你看不到图片**；`phone-look` 会把截图交给视觉模型并回文本结论。要存档才用 `phone-use shot/pull`。
+你的工具输出是文本，**你看不到图片**；`phone-look` 会把截图交给视觉模型并回文本结论。要存档才用 `phone-hand shot/pull`。
 
 ## 三、点屏幕：三级精度（从上往下选）
-1. `phone-use click-text "登录"` / `click-desc "…"` / `click-id !account`   ← 最稳
-2. `phone-use find "WLAN"` / `ui WLAN` → 取 `bounds` 算中心 → `phone-use click-xy X Y`   ← 默认用这条
-3. `phone-look --coord "…"` → `phone-use tap X Y`   ← 自绘界面/元素读不到时才用
-输入文字用 `phone-use settext --id !account "zjb"`；按键用 `phone-use key back|home|enter`。
+1. `phone-hand click-text "登录"` / `click-desc "…"` / `click-id !account`   ← 最稳
+2. `phone-hand find "WLAN"` / `ui WLAN` → 取 `bounds` 算中心 → `phone-hand click-xy X Y`   ← 默认用这条
+3. `phone-look --coord "…"` → `phone-hand tap X Y`   ← 自绘界面/元素读不到时才用
+输入文字用 `phone-hand settext --id !account "zjb"`；按键用 `phone-hand key back|home|enter`。
 **禁止直接 `adb shell input`**（MIUI/HyperOS 会被拦；`phone-use` 会自动按 root / input / jar 三级回退）。
 
 ## 四、判定纪律（不许拿返回码当成功）
-- 上线 = `phone-use wifi`：ssid 匹配 **且** supplicant=COMPLETED **且** ip 非空
-- 1X = 同上 **且** `phone-use failure <ssid>` 里 level2FailureCode=NONE
-- 门户 = `phone-use probe`：portal_intercepted=false（看普通公网地址 302→301；假的 204 不算证据）
+- 上线 = `phone-hand wifi`：ssid 匹配 **且** supplicant=COMPLETED **且** ip 非空
+- 1X = 同上 **且** `phone-hand failure <ssid>` 里 level2FailureCode=NONE
+- 门户 = `phone-hand probe`：portal_intercepted=false（看普通公网地址 302→301；假的 204 不算证据）
 - 同类失败 2 次 → 换招或报 FAIL，别卡在同一步重复
 
 ## 五、改东西的规矩（底层冻结，先复制再改）

@@ -22,7 +22,7 @@ import sys
 import urllib.request
 
 HUB = os.environ.get("PHONE_HUB_BASE", "http://127.0.0.1:8901")
-PHONE_USE = os.environ.get("PHONE_USE_BIN", "/usr/local/share/phone-use/phone-use.py")
+PHONE_USE = os.environ.get("PHONE_USE_BIN", "/opt/phone-use/base/phone-hand.py")
 SERVER_INFO = {"name": "phone-hub", "version": "1.0"}
 
 TOOLS = [
