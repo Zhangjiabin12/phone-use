@@ -248,7 +248,7 @@ const SCRCPY_PORT = 8000;
 function frameTag(dev){
   const H = location.hostname;
   const ws = encodeURIComponent(`ws://${H}:${SCRCPY_PORT}/?action=proxy-adb&remote=tcp%3A8886&udid=${dev.serial}`);
-  const src = `http://${H}:${SCRCPY_PORT}/#!action=stream&udid=${dev.serial}&player=mse&ws=${ws}&fitToScreen=true`;
+  const src = `http://${H}:${SCRCPY_PORT}/#!action=stream&udid=${dev.serial}&player=mse&ws=${ws}&fitToScreen=true&bitrate=8000000&maxSize=1280`;
   return `<iframe class="screenframe" src="${src}" allow="autoplay; fullscreen" loading="lazy"
             title="${esc(dev.model||dev.serial)} 实时画面（H.264）"></iframe>`;
 }
@@ -653,5 +653,35 @@ refresh();setInterval(refresh,8000);
     var card = w.closest('.card'); if (card) openBig(card);
   });
 })();
-</script></body>
+</script><script id="v6">
+(function(){
+  var grid = document.getElementById('grid'); if(!grid) return;
+  function ensureButtons(){
+    grid.querySelectorAll('.card').forEach(function(card){
+      var acts = card.querySelector('.actions'); if(!acts || acts.querySelector('[data-big]')) return;
+      var b = document.createElement('button');
+      b.className='btn'; b.dataset.big='1'; b.textContent='大屏';
+      b.addEventListener('click', function(){
+        var w = card.querySelector('.screen-wrap');
+        if (w) w.dispatchEvent(new MouseEvent('click', {bubbles:true}));
+      });
+      acts.appendChild(b);
+    });
+  }
+  ensureButtons();
+  setInterval(ensureButtons, 900);
+})();
+</script>
+<style id="v6">
+.screen-wrap:after{content:'点击看大屏';position:absolute;left:50%;bottom:8px;transform:translateX(-50%);
+  padding:4px 10px;border-radius:999px;background:rgba(5,8,13,.72);border:1px solid #232d40;color:#c9d4e4;
+  font-size:12px;opacity:0;transition:opacity .15s;pointer-events:none;white-space:nowrap}
+.screen-wrap:hover:after{opacity:1}
+</style><style id="v7">
+/* 6 个操作按钮挤一行：收窄内边距与字号；大屏按钮用强调描边 */
+.actions{gap:6px}
+.actions .btn{padding:0 10px;font-size:12px;min-height:32px;white-space:nowrap}
+.actions .btn[data-big]{border-color:#2f6feb;color:#9ec1ff;background:rgba(47,111,235,.12)}
+.actions .btn[data-big]:hover{background:rgba(47,111,235,.22)}
+</style></body>
 </html>
