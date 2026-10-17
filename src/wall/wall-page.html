@@ -465,7 +465,7 @@ details.tech pre{margin:6px 0 0;font-size:11px;color:var(--text-3);white-space:p
   </details>
 
   <footer class="foot">
-    <span>画面为 1–3 fps 截图流（点击可直接操作），高清版需把 ws-scrcpy 自带控制条隐藏后再内嵌。</span>
+    <span>画面为 ws-scrcpy 实时流（H.264，30–60fps，可直接操作）。</span>
     <span>重设计 Demo · 数据来自 131.255.36.102 实时接口</span>
   </footer>
 </main>
@@ -1186,5 +1186,35 @@ $('#themes').addEventListener('click', e => {
 });
 
 </script>
-</body>
+<style id="v8">
+.screenframe{width:100%;height:100%;border:0;border-radius:inherit;display:block;background:#000}
+</style>
+<script id="v8js">
+(function(){
+  var PORT = 8000;
+  function streamURL(serial){
+    var base = location.hostname || '131.255.36.102';
+    var ws = encodeURIComponent('ws://' + base + ':' + PORT + '/?action=proxy-adb&remote=tcp%3A8886&udid=' + serial);
+    return 'http://' + base + ':' + PORT + '/#!action=stream&udid=' + encodeURIComponent(serial) +
+           '&player=mse&ws=' + ws + '&fitToScreen=true&bitrate=8000000&maxSize=1280';
+  }
+  function swap(){
+    document.querySelectorAll('.card').forEach(function(card){
+      if (card.dataset.live === '1') return;
+      var img = card.querySelector('img.screen');
+      if (!img) return;
+      var serial = (card.id || '').replace('card-', '');
+      if (!serial) return;
+      var f = document.createElement('iframe');
+      f.className = 'screenframe';
+      f.src = streamURL(serial);
+      f.setAttribute('allow', 'autoplay; fullscreen');
+      f.title = (card.querySelector('.card-title') || {}).textContent || serial;
+      img.replaceWith(f);
+      card.dataset.live = '1';
+    });
+  }
+  setInterval(swap, 500);
+})();
+</script></body>
 </html>
