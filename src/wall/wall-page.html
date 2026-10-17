@@ -499,5 +499,50 @@ async function gtask(){
 }
 refresh();setInterval(refresh,8000);
 </script>
-</body>
+<style id="v3">
+/* 卡片解剖对齐 Appium Device Farm：状态胶囊+平台版本 → 型号(强调色) → 序列号(灰) → 画面 → 图标字段 → 等宽按钮 */
+.card{padding:18px;gap:14px;border-radius:12px;background:#111826;border:1px solid #1c2537}
+.card:hover{border-color:#2b364d;box-shadow:0 6px 24px rgba(0,0,0,.35)}
+.card-head{align-items:center}
+.card-title{font-size:18px;font-weight:650;letter-spacing:.01em;color:#f0b429;display:flex;align-items:center;gap:8px}
+.card-title .dot{width:7px;height:7px;border-radius:50%;background:#3fb950;box-shadow:0 0 0 3px rgba(63,185,80,.15);flex:0 0 auto}
+.card.is-offline .card-title{color:#8b98ad}
+.card.is-offline .card-title .dot{background:#f85149;box-shadow:0 0 0 3px rgba(248,81,73,.15)}
+.card.is-busy .card-title .dot{background:#d29922;box-shadow:0 0 0 3px rgba(210,153,34,.15)}
+.card.is-unusable .card-title .dot{background:#f85149;box-shadow:0 0 0 3px rgba(248,81,73,.15)}
+.card.is-unusable{border-color:rgba(248,81,73,.35)}
+.card-sub{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12.5px;color:#7d8aa0;margin-top:0;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.badges{gap:6px;align-items:center}
+.badge{padding:3px 10px;border-radius:999px;font-size:12.5px;font-weight:500;border:1px solid #232d40;background:#151c2b;color:#9aa7bd}
+.badge.ok{background:rgba(63,185,80,.12);border-color:rgba(63,185,80,.35);color:#56d364}
+.badge.warn{background:rgba(210,153,34,.12);border-color:rgba(210,153,34,.35);color:#e3b341}
+.badge.danger{background:rgba(248,81,73,.12);border-color:rgba(248,81,73,.35);color:#ff7b72}
+.badge.info{background:#151c2b;border-color:#232d40;color:#9aa7bd}
+.screenframe{min-height:0;width:100%;aspect-ratio:4/5;background:#0b0f17;border:1px solid #1c2537;border-radius:10px}
+.screen{border:1px solid #1c2537;border-radius:10px}
+.meta{font-size:13px;color:#b7c2d4;line-height:1.5}
+.meta .k{color:#7d8aa0;font-size:12px;display:inline-block;min-width:2.6em}
+.caps{gap:5px;margin-top:2px}
+.caps .cap{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:11px;line-height:1;
+  padding:4px 8px;border-radius:6px;background:#151c2b;border:1px solid #232d40;color:#8b98ad;white-space:nowrap}
+.keybar{gap:6px}
+.keybar .btn{min-height:34px;font-size:12.5px;border-radius:8px;background:#151c2b;border:1px solid #232d40;color:#c9d4e4}
+.keybar .btn:hover{background:#1b2436;border-color:#31405a}
+.task-row{gap:8px}
+.task-row input{min-height:38px;font-size:13px;border-radius:8px;background:#0b0f17;border:1px solid #232d40;color:#e6edf7}
+.task-row button{min-height:38px;border-radius:8px;background:#2f6feb;border:1px solid #2f6feb;color:#fff;font-weight:600}
+.task-row button:hover{background:#3b7bf5}
+.actions{gap:8px;margin-top:auto}
+.actions .btn{min-height:34px;border-radius:8px;background:#151c2b;border:1px solid #232d40;color:#c9d4e4}
+.actions .btn:hover{background:#1b2436;border-color:#31405a}
+#agedWrap{border:1px solid #1c2537;border-radius:12px;padding:14px 16px;background:#111826}
+#agedList{display:flex;flex-direction:column;gap:10px}
+</style><style id="v4">
+/* 状态胶囊上移到头像行之上（对齐参照物：状态 → 名称 → 序列号 → 画面 → 字段 → 按钮） */
+.card{display:flex;flex-direction:column}
+.card-head{order:-3}
+.badges{order:-2;margin-bottom:2px}
+#agedList .chk{background:#151c2b;border:1px solid #232d40;border-radius:10px;padding:12px 14px}
+</style></body>
 </html>
