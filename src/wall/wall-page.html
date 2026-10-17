@@ -544,5 +544,114 @@ refresh();setInterval(refresh,8000);
 .card-head{order:-3}
 .badges{order:-2;margin-bottom:2px}
 #agedList .chk{background:#151c2b;border:1px solid #232d40;border-radius:10px;padding:12px 14px}
-</style></body>
+</style><style id="v5">
+.topnav{display:flex;align-items:center;gap:18px;padding:6px 4px 14px;border-bottom:1px solid #1c2537;margin-bottom:16px}
+.navtabs{display:flex;gap:22px}
+.navtab{position:relative;background:none;border:0;color:#8b98ad;font-size:14px;padding:6px 2px;cursor:pointer;font-weight:500}
+.navtab.on{color:#e6edf7;font-weight:600}
+.navtab.on:after{content:'';position:absolute;left:0;right:0;bottom:-6px;height:2px;background:#2f6feb;border-radius:2px}
+.filters{display:flex;align-items:center;gap:8px;margin-left:auto}
+.fchip{display:inline-flex;align-items:center;gap:7px;padding:7px 13px;border-radius:8px;border:1px solid #232d40;background:#151c2b;color:#b7c2d4;font-size:13px;cursor:pointer}
+.fchip:hover{background:#1b2436}
+.fchip.on{border-color:#2f6feb;color:#e6edf7;background:rgba(47,111,235,.14)}
+.fdot{width:8px;height:8px;border-radius:50%}
+.screen-wrap{cursor:zoom-in}
+#bigview{position:fixed;inset:0;z-index:200;background:#05080d;display:none;flex-direction:column;padding:18px}
+#bigview.on{display:flex}
+.bv-head{display:flex;align-items:center;gap:12px;margin-bottom:12px;color:#e6edf7}
+.bv-title{font-size:17px;font-weight:650;color:#f0b429}
+.bv-sub{color:#7d8aa0;font-size:13px;font-family:ui-monospace,Menlo,Consolas,monospace}
+.bv-body{flex:1;display:flex;gap:16px;min-height:0}
+.bv-screen{flex:1;display:flex;flex-direction:column;gap:10px;background:#0b0f17;border:1px solid #1c2537;border-radius:12px;padding:12px;min-height:0}
+.bv-screen .screenframe,.bv-screen .screen{width:100%!important;height:100%!important;max-height:100%;object-fit:contain;border:0;border-radius:8px;min-height:0}
+.bv-screen .keybar{margin-top:0}
+.bv-side{width:300px;display:flex;flex-direction:column;gap:12px;color:#b7c2d4;font-size:13px}
+.bv-close{margin-left:auto;padding:8px 14px;border-radius:8px;border:1px solid #232d40;background:#151c2b;color:#c9d4e4;cursor:pointer}
+.bv-close:hover{background:#1b2436}
+</style>
+<script id="v5js">
+(function(){
+  var cmd = document.querySelector('.command');
+  var grid = document.getElementById('grid');
+  if(!cmd || !grid) return;
+
+  /* 1) 顶栏：导航 + 状态筛选 */
+  var bar = document.createElement('div'); bar.className = 'topnav';
+  bar.innerHTML = '<div class="navtabs">'
+    + '<button class="navtab on" data-tab="dev">设备</button>'
+    + '<button class="navtab" data-tab="off">离线</button></div>'
+    + '<div class="filters">'
+    + '<button class="fchip on" data-f="all">全部</button>'
+    + '<button class="fchip" data-f="usable"><span class="fdot" style="background:#56d364"></span>可用</button>'
+    + '<button class="fchip" data-f="busy"><span class="fdot" style="background:#e3b341"></span>占用</button>'
+    + '<button class="fchip" data-f="off"><span class="fdot" style="background:#ff7b72"></span>离线</button>'
+    + '</div>';
+  cmd.parentNode.insertBefore(bar, cmd);
+  var aged = document.getElementById('agedWrap');
+
+  var filter = 'all';
+  function applyFilter(){
+    var cards = grid.querySelectorAll('.card');
+    for (var i=0;i<cards.length;i++){
+      var c = cards[i], show = true;
+      if (filter==='usable') show = !c.classList.contains('is-unusable') && !c.classList.contains('is-busy');
+      else if (filter==='busy') show = c.classList.contains('is-busy');
+      else if (filter==='off') show = false;
+      c.style.display = show ? '' : 'none';
+    }
+  }
+  function setTab(tab){
+    bar.querySelectorAll('.navtab').forEach(function(b){ b.classList.toggle('on', b.dataset.tab===tab); });
+    var off = tab==='off';
+    cmd.style.display = off ? 'none' : '';
+    grid.style.display = off ? 'none' : '';
+    var empty = document.getElementById('empty'); if (empty && off) empty.style.display='none';
+    if (aged) aged.style.display = off ? 'block' : (aged.children.length ? aged.style.display : 'none');
+    if (off && filter!=='all') { filter='off'; }
+    applyFilter();
+  }
+  bar.addEventListener('click', function(e){
+    var b = e.target.closest('[data-tab]'); if (b) { setTab(b.dataset.tab); return; }
+    var c = e.target.closest('[data-f]'); if (!c) return;
+    filter = c.dataset.f;
+    bar.querySelectorAll('.fchip').forEach(function(x){ x.classList.toggle('on', x.dataset.f===filter); });
+    if (filter==='off') setTab('off'); else setTab('dev');
+  });
+  setInterval(applyFilter, 800);
+
+  /* 2) 单击画面 → 大屏（把原画面与按键条原地搬过去，关掉再搬回） */
+  var bv = document.createElement('div'); bv.id='bigview';
+  bv.innerHTML = '<div class="bv-head"><span class="bv-title"></span><span class="bv-sub"></span>'
+    + '<button class="bv-close">关闭</button></div>'
+    + '<div class="bv-body"><div class="bv-screen"></div><div class="bv-side"></div></div>';
+  document.body.appendChild(bv);
+  var bvScreen = bv.querySelector('.bv-screen'), bvSide = bv.querySelector('.bv-side');
+  var holder = null;
+  function openBig(card){
+    var wrap = card.querySelector('.screen-wrap'); if (!wrap) return;
+    holder = { card: card, wrap: wrap, parent: wrap.parentNode, next: wrap.nextSibling };
+    bv.querySelector('.bv-title').textContent = (card.querySelector('.card-title')||{}).textContent || '';
+    bv.querySelector('.bv-sub').textContent = (card.querySelector('.card-sub')||{}).textContent || '';
+    bvScreen.appendChild(wrap);
+    var kb = card.querySelector('.keybar'); if (kb) bvScreen.appendChild(kb);
+    var meta = card.querySelector('.meta'); if (meta) bvSide.appendChild(meta);
+    bvSide.appendChild(card.querySelector('.badges') || document.createElement('span'));
+    bv.classList.add('on');
+  }
+  function closeBig(){
+    if (!holder) { bv.classList.remove('on'); return; }
+    holder.card.insertBefore(holder.wrap, holder.next);
+    var kb = bvScreen.querySelector('.keybar'), meta = bvSide.querySelector('.meta');
+    if (kb) holder.card.insertBefore(kb, holder.card.querySelector('.meta'));
+    if (meta) holder.card.insertBefore(meta, holder.card.querySelector('.caps'));
+    bv.classList.remove('on'); holder = null;
+  }
+  bv.querySelector('.bv-close').addEventListener('click', closeBig);
+  document.addEventListener('keydown', function(e){ if (e.key==='Escape') closeBig(); });
+  grid.addEventListener('click', function(e){
+    var w = e.target.closest('.screen-wrap'); if (!w) return;
+    var card = w.closest('.card'); if (card) openBig(card);
+  });
+})();
+</script></body>
 </html>
