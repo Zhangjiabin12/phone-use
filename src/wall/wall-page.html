@@ -1216,5 +1216,100 @@ $('#themes').addEventListener('click', e => {
   }
   setInterval(swap, 500);
 })();
-</script></body>
+</script><script id="v9">
+(function(){
+  /* 1) 数据刷新节流：原来 1–2 秒一次，会整块重渲染卡片 → iframe 反复重建 → 卡顿 */
+  var orig = window.refresh;
+  if (typeof orig === 'function') {
+    var last = 0;
+    window.refresh = function(){
+      var now = Date.now();
+      if (now - last < 8000) return Promise.resolve();
+      last = now;
+      return orig.apply(this, arguments);
+    };
+  }
+
+  /* 2) iframe 稳定化：同一 serial 只建一次，卡片重渲染时把原 iframe 搬回去，不重连 */
+  var PORT = 8000, pool = {};
+  function streamURL(serial){
+    var base = location.hostname || '131.255.36.102';
+    var ws = encodeURIComponent('ws://' + base + ':' + PORT + '/?action=proxy-adb&remote=tcp%3A8886&udid=' + serial);
+    /* 卡片尺寸小，降到 720/3Mbps：三路同时解码才稳；大屏也能看 */
+    return 'http://' + base + ':' + PORT + '/#!action=stream&udid=' + encodeURIComponent(serial) +
+           '&player=mse&ws=' + ws + '&fitToScreen=true&bitrate=3000000&maxSize=720';
+  }
+  function ensure(){
+    document.querySelectorAll('.card').forEach(function(card){
+      var serial = (card.id || '').replace('card-', '');
+      if (!serial) return;
+      var holder = card.querySelector('.screen-wrap') || card.querySelector('.phone') || card;
+      var existing = holder.querySelector('iframe.screenframe');
+      var img = holder.querySelector('img.screen');
+      if (existing) { pool[serial] = existing; if (img) img.remove(); return; }
+      var f = pool[serial];
+      if (!f) {
+        f = document.createElement('iframe');
+        f.className = 'screenframe';
+        f.src = streamURL(serial);
+        f.setAttribute('allow', 'autoplay; fullscreen');
+        f.title = serial;
+        pool[serial] = f;
+      }
+      if (img) img.replaceWith(f); else holder.appendChild(f);
+    });
+  }
+  setInterval(ensure, 800);
+})();
+</script>
+<style id="v9">
+.screenframe{width:100%;height:100%;border:0;border-radius:inherit;display:block;background:#000}
+</style><script id="v11">
+(function(){
+  var PORT = 8000;
+  function serialOf(img){
+    var m = /\/screen\/([^\/?#]+)/.exec(img.getAttribute('src') || img.src || '');
+    return m ? decodeURIComponent(m[1]) : '';
+  }
+  function streamURL(serial, big){
+    var base = location.hostname || '131.255.36.102';
+    var ws = encodeURIComponent('ws://' + base + ':' + PORT + '/?action=proxy-adb&remote=tcp%3A8886&udid=' + serial);
+    var q = big ? '&bitrate=8000000&maxSize=1280' : '&bitrate=3000000&maxSize=720';
+    return 'http://' + base + ':' + PORT + '/#!action=stream&udid=' + encodeURIComponent(serial) +
+           '&player=mse&ws=' + ws + '&fitToScreen=true' + q;
+  }
+  function live(col, serial){
+    if (col.querySelector('iframe.screenframe')) return;
+    var img = col.querySelector('img.screen'); if (!img) return;
+    var f = document.createElement('iframe');
+    f.className = 'screenframe';
+    f.src = streamURL(serial, true);
+    f.setAttribute('allow', 'autoplay; fullscreen');
+    f.title = serial;
+    f.style.cssText = 'width:100%;height:100%;border:0;border-radius:inherit;display:block;background:#000';
+    img.style.display = 'none';
+    img.parentElement.insertBefore(f, img);
+  }
+  function dead(col){
+    var f = col.querySelector('iframe.screenframe');
+    if (!f) return;
+    f.remove();
+    var img = col.querySelector('img.screen'); if (img) img.style.display = '';
+  }
+  function scan(){
+    document.querySelectorAll('.phone-col').forEach(function(col){
+      var inCard = !!col.closest('.card');
+      var img = col.querySelector('img.screen');
+      if (!inCard && img) live(col, serialOf(img));   // 大屏：开一路实时流
+      else if (inCard) dead(col);                      // 卡片：不留流
+    });
+  }
+  scan();
+  setInterval(scan, 600);
+})();
+</script>
+<style id="v11s">
+img.screen{display:block}
+</style>
+</body>
 </html>
