@@ -392,7 +392,7 @@ def delegate_to_phone_use(text, device="auto", timeout=None, max_steps=None):
         if str(ms).strip():
             cmd += ["--max-steps", str(ms).strip()]
         pr = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout or DEADLINE)
-        out = (pr.stdout or "") + (("\n[stderr]\n" + pr.stderr[-800:]) if pr.returncode else "")
+        out = (pr.stdout or "") + "\n" + (pr.stderr or "")  # MERGED_OUT_ERR
     except subprocess.TimeoutExpired:
         out = "任务超时（%ss）" % (timeout or DEADLINE)
         if leased:
@@ -422,7 +422,7 @@ def delegate_to_phone_use(text, device="auto", timeout=None, max_steps=None):
         v = "ANSWER"
     return {"ok": v in ("PASS", "ANSWER"), "verdict": v, "serial": ser,
             "delegated": "phone-use", "steps": steps, "elapsed": elapsed,
-            "trace": trace, "answer": out[-6000:]}
+            "trace": trace, "answer": (pr.stdout or "")[-6000:] or out[-6000:]}
 
 
 def run_task(text, device="auto", max_steps=MAX_STEPS, owner=None, devices=None,
