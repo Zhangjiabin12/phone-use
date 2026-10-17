@@ -135,6 +135,20 @@ def probe(serial):
     d["wifi_cmd_error"] = None
     if d["cmd_wifi_connect"]:
         probe_ssid = "phone-hub-probe"
+        # Wi-Fi 被关掉时，connect-network 只会回 "Connection failed"，会误判成"不能自动连网"
+        _rc, _st, _e = adb(serial, "shell", "cmd", "wifi", "status", timeout=20)
+        if "disabled" in (_st or "").lower():
+            adb(serial, "shell", "svc", "wifi", "enable", timeout=20)
+            import time as _t; _t.sleep(3)
+            _rc2, _st2, _e2 = adb(serial, "shell", "cmd", "wifi", "status", timeout=20)
+            if "disabled" in (_st2 or "").lower():
+                d["wifi_cmd_ok"] = False
+                d["wifi_cmd_error"] = "Wi-Fi 处于关闭状态，且自动开启失败"
+                d["blockers"] = (d.get("blockers") or []) + [{
+                    "id": "wifi_off",
+                    "msg": "Wi-Fi 是关的（不是权限问题）",
+                    "fix": "打开 Wi-Fi：手机下拉控制中心点开，或执行 svc wifi enable"}]
+                return d
         rc, o2, e2 = adb(serial, "shell", "cmd", "wifi", "connect-network", probe_ssid, "open", timeout=40)
         out = o2 + e2
         d["wifi_cmd_ok"] = "Connection initiated" in out
