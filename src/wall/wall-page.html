@@ -1483,96 +1483,7 @@ img.screen{display:block}
 .live-keys{display:flex;gap:8px;justify-content:center}
 .live-keys button{padding:8px 16px;border-radius:8px;border:1px solid #232d40;background:#151c2b;color:#c9d4e4;cursor:pointer}
 </style>
-<script id="v15">
-(function(){
-  var PORT = 8000;
-  function devs(){ return (window.S && S.devices) ? S.devices : []; }
-  function dev(serial){ return devs().find(function(x){ return x.serial === serial; }); }
-  function post(path, body){
-    return fetch(path, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)}).then(function(r){ return r.json(); }).catch(function(){ return null; });
-  }
-  function esc(s){ return String(s == null ? '' : s).replace(/[&<>]/g, function(c){ return ({'&':'&amp;','<':'&lt;','>':'&gt;'})[c]; }); }
-  function modal(title, bodyEl){
-    if (typeof openModal === 'function') { openModal({title: title, sub: '', bodyEl: bodyEl, auto: true}); return; }
-    var ov = document.createElement('div');
-    ov.style.cssText = 'position:fixed;inset:0;background:#05080d;z-index:300;display:flex;align-items:center;justify-content:center;padding:20px';
-    var box = document.createElement('div'); box.style.cssText = 'background:#0d1421;border:1px solid #232d40;border-radius:12px;padding:18px';
-    box.appendChild(bodyEl); ov.appendChild(box);
-    ov.addEventListener('click', function(e){ if (e.target === ov) ov.remove(); });
-    document.body.appendChild(ov);
-  }
-  function streamURL(serial){
-    var base = location.hostname || '131.255.36.102';
-    var ws = encodeURIComponent('ws://' + base + ':' + PORT + '/?action=proxy-adb&remote=tcp%3A8886&udid=' + serial);
-    return 'http://' + base + ':' + PORT + '/#!action=stream&udid=' + encodeURIComponent(serial) +
-           '&player=mse&ws=' + ws + '&fitToScreen=true&bitrate=8000000&maxSize=1280';
-  }
-  /* 第三层：实时画面（同一时刻只允许一路） */
-  function openLive(serial){
-    var wrap = document.createElement('div'); wrap.className = 'live-wrap';
-    var f = document.createElement('iframe');
-    f.src = streamURL(serial); f.setAttribute('allow', 'autoplay; fullscreen'); f.title = serial;
-    wrap.appendChild(f);
-    var keys = document.createElement('div'); keys.className = 'live-keys';
-    [['back','返回'],['home','Home'],['app_switch','最近'],['notifications','通知'],['wakeup','唤醒']].forEach(function(k){
-      var b = document.createElement('button'); b.textContent = k[1];
-      b.addEventListener('click', function(){ post('/api/key', {serial: serial, key: k[0]}); });
-      keys.appendChild(b);
-    });
-    wrap.appendChild(keys);
-    modal('实时画面 · ' + serial, wrap);
-  }
-  /* 第二层：单台详情 */
-  function openDetail(serial){
-    var d = dev(serial) || {serial: serial};
-    var box = document.createElement('div'); box.className = 'detail';
-    var lease = d.lease && d.lease.owner ? ('占用中 · ' + d.lease.owner + (d.lease.remaining_s != null ? ' · 剩 ' + Math.round(d.lease.remaining_s) + 's' : '')) : '空闲';
-    var blk = (d.blockers || []).map(function(b){ return b.msg + ' → ' + b.fix; }).join('<br>');
-    box.innerHTML =
-      '<div class="dsec"><h4>状态</h4><div class="kv">' +
-        '<b>占用</b><span>' + esc(lease) + '</span>' +
-        '<b>可用</b><span>' + (d.usable ? '是（可无人值守）' : '否' + (blk ? '：' + blk : '')) + '</span>' +
-        '<b>后端</b><span>' + esc(d.backend || '-') + ' · root=' + (d.root ? '是' : '否') + '</span>' +
-        '<b>屏幕</b><span>' + esc(d.screen || '-') + (d.screen_display_on === false ? '（熄灭）' : '') + '</span>' +
-      '</div></div>' +
-      '<div class="dsec"><h4>网络</h4><div class="kv">' +
-        '<b>SSID</b><span>' + esc(d.wifi_ssid || '—') + '</span>' +
-        '<b>IP</b><span>' + esc(d.wifi_ip || '—') + '</span>' +
-        '<b>MAC</b><span>' + esc(d.wifi_mac || '—') + '</span>' +
-      '</div></div>' +
-      '<div class="dsec"><h4>能力（' + ((d.capabilities || []).length) + '）</h4><div style="display:flex;flex-wrap:wrap;gap:6px">' +
-        (d.capabilities || []).map(function(c){ return '<span style="font-size:11.5px;padding:4px 8px;border-radius:6px;background:#151c2b;border:1px solid #232d40;color:#8b98ad">' + esc(c) + '</span>'; }).join('') +
-      '</div></div>' +
-      '<div class="dsec"><h4>版本</h4><div class="kv">' +
-        '<b>安卓</b><span>' + esc(d.android || '-') + ' · ' + esc(d.miui || '-') + '</span>' +
-        '<b>组件</b><span>' + esc((d.versions && ('phone-use ' + d.versions.phone_use + ' · jar ' + d.versions.pu_jar_sha1)) || '-') + '</span>' +
-      '</div></div>' +
-      '<div class="dbtns">' +
-        '<button class="primary" data-a="live">实时画面</button>' +
-        '<button data-a="lease">占用</button>' +
-        '<button data-a="release">释放</button>' +
-        '<button data-a="doctor">体检</button>' +
-      '</div>';
-    box.querySelector('.dbtns').addEventListener('click', async function(ev){
-      var b = ev.target.closest('button'); if (!b) return;
-      var a = b.dataset.a;
-      if (a === 'live') return openLive(serial);
-      if (a === 'lease') { await post('/api/lease', {serial: serial, owner: 'wall', ttl: 900}); }
-      if (a === 'release') { await post('/api/release', {serial: serial, owner: 'wall'}); }
-      if (a === 'doctor') { b.textContent = '体检中…'; var r = await post('/api/doctor', {serial: serial}); b.textContent = '体检'; if (r) modal('体检 · ' + serial, (function(){ var w=document.createElement('div'); w.style.cssText='max-height:60vh;overflow:auto;font-size:13px;color:#b7c2d4;white-space:pre-wrap'; w.textContent = JSON.stringify(r, null, 2); return w; })()); }
-    });
-    modal((d.model || serial) + ' · ' + serial, box);
-  }
-  /* 第一层：点卡片（避开按钮）进第二层 */
-  document.addEventListener('click', function(ev){
-    if (ev.target.closest('button, a, input, iframe, .modal')) return;
-    var card = ev.target.closest('.card'); if (!card) return;
-    var img = card.querySelector('img.screen');
-    var m = img && /\/screen\/([^\/?#]+)/.exec(img.getAttribute('src') || '');
-    if (m) openDetail(decodeURIComponent(m[1]));
-  }, false);
-})();
-</script>
+
 <style id="v16">
 /* 总览层：画面已隐藏，卡片改为单列信息，不留空栏 */
 .card .card-body{display:block !important}
@@ -1585,5 +1496,132 @@ img.screen{display:block}
 .card .keys{display:none !important}
 .card:after{display:none !important}
 </style>
+<script id="v18">
+(function(){
+  var PORT = 8000, CACHE = null, CACHE_AT = 0;
+  function esc(s){ return String(s == null ? '' : s).replace(/[&<>"]/g, function(c){ return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'})[c]; }); }
+  function loadDevs(force){
+    if (!force && CACHE && Date.now() - CACHE_AT < 3000) return Promise.resolve(CACHE);
+    return fetch('/api/devices').then(function(r){ return r.json(); }).then(function(j){
+      CACHE = j.devices || []; CACHE_AT = Date.now(); return CACHE;
+    }).catch(function(){ return CACHE || []; });
+  }
+  function post(path, body){
+    return fetch(path, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)})
+      .then(function(r){ return r.json(); }).catch(function(){ return null; });
+  }
+  function dialog(title, bodyEl){
+    if (typeof openModal === 'function') { openModal({title: title, sub: '', bodyEl: bodyEl, auto: true}); return; }
+    var ov = document.createElement('div');
+    ov.style.cssText = 'position:fixed;inset:0;background:#05080d;z-index:300;display:flex;align-items:center;justify-content:center;padding:20px';
+    var box = document.createElement('div');
+    box.style.cssText = 'background:#0d1421;border:1px solid #232d40;border-radius:12px;padding:18px;max-width:90vw;max-height:86vh;overflow:auto';
+    var t = document.createElement('div'); t.textContent = title; t.style.cssText = 'font-size:15px;font-weight:650;color:#e6edf7;margin-bottom:12px';
+    box.appendChild(t); box.appendChild(bodyEl); ov.appendChild(box);
+    ov.addEventListener('click', function(e){ if (e.target === ov) ov.remove(); });
+    document.body.appendChild(ov);
+  }
+  function streamURL(serial){
+    var base = location.hostname || '131.255.36.102';
+    var ws = encodeURIComponent('ws://' + base + ':' + PORT + '/?action=proxy-adb&remote=tcp%3A8886&udid=' + serial);
+    return 'http://' + base + ':' + PORT + '/#!action=stream&udid=' + encodeURIComponent(serial) +
+           '&player=mse&ws=' + ws + '&fitToScreen=true&bitrate=8000000&maxSize=1280';
+  }
+  function openLive(serial){
+    var w = document.createElement('div');
+    w.innerHTML = '<div style="display:flex;flex-direction:column;gap:10px;width:min(760px,88vw)">' +
+      '<iframe allow="autoplay; fullscreen" style="width:100%;height:min(70vh,740px);border:0;border-radius:10px;background:#000"></iframe>' +
+      '<div class="lk" style="display:flex;gap:8px;justify-content:center"></div></div>';
+    w.querySelector('iframe').src = streamURL(serial);
+    var keys = w.querySelector('.lk');
+    [['back','返回'],['home','Home'],['app_switch','最近'],['notifications','通知'],['wakeup','唤醒']].forEach(function(k){
+      var b = document.createElement('button');
+      b.textContent = k[1];
+      b.style.cssText = 'padding:8px 16px;border-radius:8px;border:1px solid #232d40;background:#151c2b;color:#c9d4e4;cursor:pointer';
+      b.addEventListener('click', function(){ post('/api/key', {serial: serial, key: k[0]}); });
+      keys.appendChild(b);
+    });
+    dialog('实时画面 · ' + serial, w.firstChild);
+  }
+  function openDetail(serial){
+    loadDevs(true).then(function(list){
+      var d = (list || []).find(function(x){ return x.serial === serial; }) || {serial: serial};
+      var lease = d.lease && d.lease.owner ? ('占用中 · ' + d.lease.owner + (d.lease.remaining_s != null ? ' · 剩 ' + Math.round(d.lease.remaining_s) + 's' : '')) : '空闲';
+      var blk = (d.blockers || []).map(function(x){ return x.msg + ' → ' + x.fix; }).join('<br>');
+      var caps = (d.capabilities || []).map(function(c){ return '<span style="font-size:11.5px;padding:4px 8px;border-radius:6px;background:#151c2b;border:1px solid #232d40;color:#8b98ad;margin:0 6px 6px 0;display:inline-block">' + esc(c) + '</span>'; }).join('');
+      var box = document.createElement('div');
+      box.style.cssText = 'display:flex;flex-direction:column;gap:12px';
+      box.innerHTML =
+        '<div class="dsec"><h4>名称</h4>' +
+          '<div style="display:flex;gap:8px"><input id="aliasIn" placeholder="给这台起个名字，例如 华为-1 号位" style="flex:1;min-height:36px;padding:0 10px;border-radius:8px;background:#0b0f17;border:1px solid #232d40;color:#e6edf7">' +
+          '<button id="aliasSave" style="padding:0 16px;border-radius:8px;background:#2f6feb;border:1px solid #2f6feb;color:#fff;font-weight:600;cursor:pointer">保存</button></div>' +
+        '</div>' +
+        '<div class="dsec"><h4>状态</h4><div style="display:grid;grid-template-columns:90px 1fr;gap:6px 10px;font-size:13px;color:#b7c2d4">' +
+          '<b style="color:#7d8aa0">占用</b><span>' + esc(lease) + '</span>' +
+          '<b style="color:#7d8aa0">可用</b><span>' + (d.usable ? '是' : ('否' + (blk ? '：' + blk : ''))) + '</span>' +
+          '<b style="color:#7d8aa0">后端</b><span>' + esc(d.backend || '-') + ' · root=' + (d.root ? '是' : '否') + '</span>' +
+          '<b style="color:#7d8aa0">屏幕</b><span>' + esc(d.screen || '-') + (d.screen_display_on === false ? '（熄灭）' : '') + '</span>' +
+        '</div></div>' +
+        '<div class="dsec"><h4>网络</h4><div style="display:grid;grid-template-columns:90px 1fr;gap:6px 10px;font-size:13px;color:#b7c2d4">' +
+          '<b style="color:#7d8aa0">SSID</b><span>' + esc(d.wifi_ssid || '—') + '</span>' +
+          '<b style="color:#7d8aa0">IP</b><span>' + esc(d.wifi_ip || '—') + '</span>' +
+          '<b style="color:#7d8aa0">MAC</b><span>' + esc(d.wifi_mac || '—') + '</span>' +
+        '</div></div>' +
+        '<div class="dsec"><h4>能力（' + (d.capabilities || []).length + '）</h4><div>' + caps + '</div></div>' +
+        '<div class="dsec"><h4>版本</h4><div style="display:grid;grid-template-columns:90px 1fr;gap:6px 10px;font-size:13px;color:#b7c2d4">' +
+          '<b style="color:#7d8aa0">安卓</b><span>' + esc(d.android || '-') + ' · ' + esc(d.miui || '-') + '</span>' +
+          '<b style="color:#7d8aa0">组件</b><span>' + esc('phone-use ' + ((d.versions || {}).phone_use || '-')) + ' · jar ' + esc((d.versions || {}).pu_jar_sha1 || '-') + '</span>' +
+        '</div></div>' +
+        '<div style="display:flex;gap:8px;flex-wrap:wrap">' +
+          '<button data-a="live" style="padding:9px 16px;border-radius:8px;background:#2f6feb;border:1px solid #2f6feb;color:#fff;font-weight:600;cursor:pointer">实时画面</button>' +
+          '<button data-a="lease" style="padding:9px 16px;border-radius:8px;background:#151c2b;border:1px solid #232d40;color:#c9d4e4;cursor:pointer">占用</button>' +
+          '<button data-a="release" style="padding:9px 16px;border-radius:8px;background:#151c2b;border:1px solid #232d40;color:#c9d4e4;cursor:pointer">释放</button>' +
+          '<button data-a="doctor" style="padding:9px 16px;border-radius:8px;background:#151c2b;border:1px solid #232d40;color:#c9d4e4;cursor:pointer">体检</button>' +
+        '</div>';
+      var inp = box.querySelector('#aliasIn');
+      inp.value = d.alias || '';
+      inp.placeholder = (d.model || '') + ' · 起个名字';
+      box.querySelector('#aliasSave').addEventListener('click', function(){
+        post('/api/alias', {serial: serial, name: inp.value}).then(function(){ CACHE_AT = 0; location.reload(); });
+      });
+      box.addEventListener('click', function(ev){
+        var btn = ev.target.closest('[data-a]'); if (!btn) return;
+        var a = btn.dataset.a;
+        if (a === 'live') openLive(serial);
+        if (a === 'lease') post('/api/lease', {serial: serial, owner: 'wall', ttl: 900}).then(function(){ CACHE_AT = 0; });
+        if (a === 'release') post('/api/release', {serial: serial, owner: 'wall'}).then(function(){ CACHE_AT = 0; });
+        if (a === 'doctor') { btn.textContent = '体检中…'; post('/api/doctor', {serial: serial}).then(function(r){
+            btn.textContent = '体检'; var w = document.createElement('div');
+            w.style.cssText = 'max-height:56vh;overflow:auto;font-size:12.5px;color:#b7c2d4;white-space:pre-wrap';
+            w.textContent = JSON.stringify(r, null, 2); dialog('体检 · ' + serial, w); }); }
+      });
+      dialog((d.alias || d.model || serial) + ' · ' + serial, box);
+    });
+  }
+  /* 卡片标题优先显示别名 */
+  function paintAlias(){
+    loadDevs().then(function(list){
+      document.querySelectorAll('.card[data-serial]').forEach(function(card){
+        var serial = card.dataset.serial;
+        var d = (list || []).find(function(x){ return x.serial === serial; });
+        if (!d || !d.alias) return;
+        var el = card.querySelector('[data-f="model"]');
+        if (el && el.textContent !== d.alias) {
+          el.textContent = d.alias;
+          el.title = d.model || '';
+          card.dataset.alias = d.alias;
+        }
+      });
+    });
+  }
+  setInterval(paintAlias, 2000);
+  document.addEventListener('click', function(ev){
+    if (ev.target.closest('button, a, input, iframe, .modal')) return;
+    var card = ev.target.closest('.card'); if (!card) return;
+    var serial = card.dataset.serial;
+    if (serial) { ev.stopPropagation(); ev.preventDefault(); openDetail(serial); }
+  }, true);
+})();
+</script>
 </body>
 </html>

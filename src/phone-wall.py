@@ -24,6 +24,20 @@ AGENT = os.environ.get("PHONE_AGENT_BASE", "http://127.0.0.1:8902")
 JPEG_W = int(os.environ.get("PHONE_WALL_WIDTH", "480"))
 FPS = float(os.environ.get("PHONE_WALL_FPS", "2"))
 FRAME_CACHE, WALL_LOOPS, LOCK = {}, {}, threading.Lock()
+ALIAS_FILE = "/usr/local/share/phone-wall/aliases.json"
+try:
+    ALIASES = json.load(open(ALIAS_FILE, encoding="utf-8"))
+except Exception:
+    ALIASES = {}
+
+
+def _save_aliases():
+    try:
+        with open(ALIAS_FILE, "w", encoding="utf-8") as _f:
+            json.dump(ALIASES, _f, ensure_ascii=False, indent=2)
+    except Exception:
+        pass
+
 
 
 def sh(cmd, timeout=60, binary=False):
@@ -114,6 +128,7 @@ class H(BaseHTTPRequestHandler):
                     for dev in d.get("devices", []):
                         item = FRAME_CACHE.get(dev.get("serial"))
                         dev["screen_blank"] = bool(item[2]) if item else None
+                        dev["alias"] = ALIASES.get(dev.get("serial"))
                 return self._send(d)
             except Exception as e:
                 return self._send({"error": str(e)}, code=500)
@@ -147,6 +162,14 @@ class H(BaseHTTPRequestHandler):
         p = self.path.split("?")[0]
         serial = body.get("serial")
         try:
+            if p == "/api/alias":
+                name = (body.get("name") or "").strip()[:40]
+                if name:
+                    ALIASES[serial] = name
+                else:
+                    ALIASES.pop(serial, None)
+                _save_aliases()
+                return self._send({"serial": serial, "alias": ALIASES.get(serial)})
             if p == "/api/click":
                 dev = hub("GET", "/devices/%s" % serial, timeout=30)
                 if dev.get("lease") and dev["lease"].get("owner") != "wall":
