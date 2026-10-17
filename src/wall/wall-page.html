@@ -111,7 +111,31 @@ button,input,select{font:inherit;color:inherit}
 .blocker{border:1px solid var(--danger-border);background:var(--danger-bg);border-radius:var(--radius-sm);
   padding:var(--sp-3);font-size:14px;color:#ffb4ae;display:flex;gap:var(--sp-2)}
 .blocker svg{flex:0 0 auto;width:17px;height:17px;color:var(--danger);margin-top:2px}
+/* ============ 版式与视觉修正 ============ */
 .blocker ul{margin:6px 0 0;padding-left:18px}
+svg{width:1em;height:1em;flex:0 0 auto;vertical-align:-.125em}
+#agedSummary{display:flex;align-items:center;gap:8px;font-size:14px}
+#agedSummary svg{width:17px;height:17px}
+#agedList .chk svg{width:16px;height:16px}
+.wrap{max-width:1560px;margin:0 auto}
+.grid{grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:20px;align-items:start}
+.card{padding:16px;gap:12px}
+.screenframe{min-height:440px}
+.screen-wrap{min-height:0}
+.card-title{font-size:16px;letter-spacing:.01em}
+.meta{font-size:13.5px;line-height:1.55;color:var(--text-2)}
+.caps{display:flex;flex-wrap:wrap;gap:5px;margin-top:2px}
+.caps .cap{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:11.5px;line-height:1;
+  padding:4px 7px;border-radius:999px;background:var(--surface-2);border:1px solid var(--border);
+  color:var(--text-3);white-space:nowrap}
+.keybar{gap:8px}
+.keybar .btn{min-height:34px;font-size:12.5px}
+.task-row input{min-height:38px;font-size:13.5px}
+.actions{gap:8px;margin-top:2px}
+.actions .btn{min-height:34px}
+#agedWrap{border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;background:var(--surface)}
+#agedList{display:flex;flex-direction:column;gap:10px}
+
 .blocker li{margin:4px 0}
 
 /* ============ 体检面板 ============ */
@@ -314,7 +338,7 @@ function updateCard(c,dev){
   c.querySelector('.meta').innerHTML=
     `<span class="k">系统</span> Android ${dev.android} · ${dev.miui||'-'}\n`+
     `<span class="k">网络</span> ${esc(dev.wifi_ssid||'—')} ${esc(dev.wifi_ip||'')} ${esc(dev.wifi_mac||'')}\n`+
-    `<span class="k">能力</span> <span class="mono">${(dev.capabilities||[]).join(' · ').slice(0,120)}</span>`;
+    `<span class="k">能力</span> <span class="caps">${(dev.capabilities||[]).map(x=>`<span class="cap">${esc(x)}</span>`).join('')}</span>`;
   c.querySelector('.meta').style.whiteSpace='pre-line';
   c.querySelector('.blk').innerHTML=blockerHtml(dev);
   const busy=!!(dev.lease&&dev.lease.owner), inp=c.querySelector('input'), btn=c.querySelector('.task-row button');
