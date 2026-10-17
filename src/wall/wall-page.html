@@ -1311,5 +1311,52 @@ $('#themes').addEventListener('click', e => {
 <style id="v11s">
 img.screen{display:block}
 </style>
+<script id="v12">
+(function(){
+  var drag = null, lastDrag = 0;
+  function api(path, body){
+    return fetch(path, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)}).then(r=>r.json()).catch(()=>null);
+  }
+  function serialOf(el){
+    var img = el.closest('.phone') && el.closest('.phone').querySelector('img.screen');
+    if (!img) return '';
+    var m = /\/screen\/([^\/?#]+)/.exec(img.getAttribute('src') || img.src || '');
+    return m ? decodeURIComponent(m[1]) : '';
+  }
+  function scale(el){
+    var img = el.closest('.phone') && el.closest('.phone').querySelector('img.screen');
+    if (!img) return null;
+    var r = img.getBoundingClientRect();
+    var d = (window.S && S.devices ? S.devices : []).find(x => serialOf(el) === x.serial) || {};
+    var w = d.screen_w || 1080, hh = d.screen_h || 2340;
+    return {oy: hh / r.height, ox: w / r.width, rect: r};
+  }
+  document.addEventListener('pointerdown', function(ev){
+    var phone = ev.target.closest('.phone');
+    if (!phone || ev.target.closest('iframe')) return;
+    var sc = scale(phone); if (!sc) return;
+    drag = {phone: phone, x0: ev.clientX, y0: ev.clientY, moved: false};
+  }, true);
+  document.addEventListener('pointerup', function(ev){
+    if (!drag) return;
+    var dx = ev.clientX - drag.x0, dy = ev.clientY - drag.y0;
+    var d = Math.hypot(dx, dy);
+    var phone = drag.phone;
+    var track = drag; drag = null;
+    if (d < 12) return;                       // 小位移交给原生 click
+    var sc = scale(phone); if (!sc) return;
+    var serial = serialOf(phone); if (!serial) return;
+    var r = sc.rect;
+    var x1 = Math.round((track.x0 - r.left) * sc.ox), y1 = Math.round((track.y0 - r.top) * sc.oy);
+    var x2 = Math.round((ev.clientX - r.left) * sc.ox), y2 = Math.round((ev.clientY - r.top) * sc.oy);
+    lastDrag = Date.now();
+    api('/api/swipe', {serial: serial, x1: x1, y1: y1, x2: x2, y2: y2, ms: 260});
+  }, true);
+  /* 拖拽结束后 300ms 内吃掉合成 click，避免"滑动变点击" */
+  document.addEventListener('click', function(ev){
+    if (Date.now() - lastDrag < 320) { ev.stopPropagation(); ev.preventDefault(); }
+  }, true);
+})();
+</script>
 </body>
 </html>
