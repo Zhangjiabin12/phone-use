@@ -153,6 +153,13 @@ class H(BaseHTTPRequestHandler):
                     return self._send({"blocked": True,
                                        "error": "终端被 %s 占用（剩余 %ss）；先释放或点『强制收回』" % (
                                            dev["lease"]["owner"], dev["lease"].get("remaining_s"))}, 409)
+                # AUTO_WAKE：屏幕黑着时点击不会有任何反应，先唤醒
+                try:
+                    if (dev.get("screen_display_on") is False) or (dev.get("screen") and dev.get("screen") != "Awake"):
+                        hub("POST", "/devices/%s/exec" % serial,
+                            {"args": ["key", "wakeup"], "owner": "wall", "force": True}, timeout=60)
+                except Exception:
+                    pass
                 argv = ["tap", str(body["x"]), str(body["y"])] if dev.get("root") \
                     else ["click-xy", str(body["x"]), str(body["y"])]
                 r = hub("POST", "/devices/%s/exec" % serial,
